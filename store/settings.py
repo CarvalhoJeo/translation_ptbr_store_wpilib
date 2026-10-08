@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "accounts",
     "ledger",
     "transifex",
+    "shop",
 ]
 
 MIDDLEWARE = [
