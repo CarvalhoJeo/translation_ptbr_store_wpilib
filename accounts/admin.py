@@ -9,6 +9,7 @@ class ProfileAdmin(admin.ModelAdmin):
     list_display = ["user", "transifex_username", "link_status"]
     list_filter = ["link_status"]
     search_fields = ["user__username", "transifex_username"]
+    readonly_fields = ["transifex_username", "link_status"]
     actions = ["approve", "reject"]
 
     @admin.action(description="Aprovar vínculo com o Transifex")

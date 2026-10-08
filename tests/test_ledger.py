@@ -100,3 +100,10 @@ def test_balance_includes_negative_entries(django_user_model):
 
 def test_balance_of_user_without_entries_is_zero(django_user_model):
     assert balance(django_user_model.objects.create_user("nova")) == 0
+
+
+def test_profile_admin_cannot_edit_link_fields_directly():
+    from django.contrib.admin.sites import site
+
+    readonly = site._registry[Profile].get_readonly_fields(request=None)
+    assert {"transifex_username", "link_status"} <= set(readonly)
