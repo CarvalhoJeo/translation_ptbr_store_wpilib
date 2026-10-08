@@ -7,11 +7,13 @@ from responses import matchers
 
 from accounts.services import approve_link, request_link
 from ledger.events import ProgressEvent
-from ledger.models import PointEntry
+from accounts.models import Profile
+from ledger.models import PointEntry, UnclaimedEvent
 from ledger.services import balance
 from transifex.client import TransifexError
 from transifex.models import TrackedResource
 from transifex.sync import sync_all
+from ledger.services import record_progress
 
 pytestmark = pytest.mark.django_db
 
@@ -24,14 +26,16 @@ def ev(key, user="alice", words=10):
 
 
 class FakeSource:
-    def __init__(self, by_resource, fail=()):
-        self.by_resource, self.fail, self.since = by_resource, set(fail), {}
+    def __init__(self, by_resource, fail=(), crash=()):
+        self.by_resource, self.fail, self.crash, self.since = by_resource, set(fail), set(crash), {}
 
     def events_for(self, resource_id, since):
         self.since[resource_id] = since
         yield from self.by_resource.get(resource_id, [])
         if resource_id in self.fail:
             raise TransifexError("HTTP 503 no meio da paginação")
+        if resource_id in getattr(self, "crash", ()):
+            raise ValueError("boom")
 
 
 @pytest.fixture
@@ -107,3 +111,44 @@ def test_track_resources_command_adds_new_ids_once(settings):
     call_command("track_resources")
     call_command("track_resources")
     assert sorted(TrackedResource.objects.values_list("resource_id", flat=True)) == ["r1", "r2"]
+
+
+def test_unexpected_exception_in_one_resource_does_not_abort_sync(ana):
+    TrackedResource.objects.create(resource_id="bad")
+    TrackedResource.objects.create(resource_id="good")
+    source = FakeSource({"bad": [ev("k1")], "good": [ev("k2")]}, crash={"bad"})
+
+    result = sync_all(source, NOW, LAUNCH)
+
+    assert (result.resources_ok, result.resources_failed) == (1, 1)
+    assert balance(ana) == 20  # no partial points from "bad"
+    bad = TrackedResource.objects.get(resource_id="bad")
+    assert bad.cursor is None
+    assert "ValueError" in bad.last_error
+    assert TrackedResource.objects.get(resource_id="good").cursor == NOW
+
+
+def test_late_approval_race_is_swept_after_sync(django_user_model):
+    user = django_user_model.objects.create_user("ana")
+    request_link(user, "alice")
+    record_progress(ev("parked"))  # alice not approved yet: parked
+    assert UnclaimedEvent.objects.count() == 1
+    Profile.objects.filter(user=user).update(link_status="approved")  # race: approved without claiming
+
+    result = sync_all(FakeSource({}), NOW, LAUNCH)
+
+    assert result.claimed_late == 1
+    assert balance(user) == 20
+    assert UnclaimedEvent.objects.count() == 0
+
+
+def test_sync_does_not_overwrite_admin_edits_to_other_fields(ana):
+    tracked = TrackedResource.objects.create(resource_id="r1")
+
+    class EditingSource(FakeSource):
+        def events_for(self, resource_id, since):
+            TrackedResource.objects.filter(pk=tracked.pk).update(active=False)
+            return super().events_for(resource_id, since)
+
+    sync_all(EditingSource({}), NOW, LAUNCH)
+    assert TrackedResource.objects.get().active is False

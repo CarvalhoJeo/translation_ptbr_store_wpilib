@@ -16,7 +16,10 @@ class Command(BaseCommand):
         client = TransifexClient(settings.TRANSIFEX_API_TOKEN)
         source = ResourceTranslationsSource(client, settings.TRANSIFEX_LANGUAGE, settings.LAUNCH_AT)
         result = sync_all(source, timezone.now(), settings.LAUNCH_AT)
-        summary = f"{result.resources_ok} recursos ok, {result.resources_failed} com erro, {result.new_events} eventos novos"
+        summary = (
+            f"{result.resources_ok} recursos ok, {result.resources_failed} com erro, "
+            f"{result.new_events} eventos novos, {result.claimed_late} eventos pendentes creditados"
+        )
         if result.resources_failed:
             raise CommandError(summary + " (veja last_error no admin)")
         self.stdout.write(self.style.SUCCESS(summary))

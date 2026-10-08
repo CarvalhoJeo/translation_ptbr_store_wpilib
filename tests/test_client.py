@@ -85,3 +85,11 @@ def test_iter_resources_yields_ids():
     )
     client = TransifexClient("tok")
     assert list(client.iter_resources("o:wpilib:p:frc-docs")) == [f"{RES}1", f"{RES}2"]
+
+
+@responses.activate
+def test_non_json_200_raises_transifex_error():
+    responses.get(URL, body="<html>oops</html>", status=200)
+    client = TransifexClient("tok", sleep=lambda s: None)
+    with pytest.raises(TransifexError, match="não-JSON"):
+        list(client.iter_translations(RES, "l:pt", {}))

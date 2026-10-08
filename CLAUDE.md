@@ -13,7 +13,7 @@ Plan 1 (earning points: accounts, ledger, Transifex sync) is implemented. Plan 2
 - Dev server: `uv run python manage.py migrate && uv run python manage.py runserver`
 - Admin user: `uv run python manage.py createsuperuser`
 - Track all frc-docs resources: `uv run python manage.py track_resources`
-- Sync points (cron, every 30–60 min): `uv run python manage.py sync_transifex` (exits non-zero if any resource failed)
+- Sync points (cron, every 30–60 min): `flock -n /tmp/sync_transifex.lock sh -c 'uv run python manage.py track_resources && uv run python manage.py sync_transifex'` (exits non-zero if any resource failed). The lock prevents overlapping runs, and `track_resources` picks up newly added frc-docs pages. If a resource is deleted on Transifex, deactivate it in the admin.
 
 ## What this is
 

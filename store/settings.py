@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 from pathlib import Path
 
@@ -97,3 +97,5 @@ TRANSIFEX_API_TOKEN = os.environ.get("TRANSIFEX_API_TOKEN", "")
 TRANSIFEX_PROJECT = "o:wpilib:p:frc-docs"
 TRANSIFEX_LANGUAGE = "l:pt"
 LAUNCH_AT = datetime.fromisoformat(os.environ.get("LAUNCH_AT") or "2026-11-01T00:00:00Z")
+if LAUNCH_AT.tzinfo is None:
+    LAUNCH_AT = LAUNCH_AT.replace(tzinfo=timezone.utc)

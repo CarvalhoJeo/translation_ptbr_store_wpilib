@@ -35,7 +35,10 @@ class TransifexClient:
                 continue
             if resp.status_code != 200:
                 raise TransifexError(f"HTTP {resp.status_code} em {resp.url}: {resp.text[:300]}")
-            return resp.json()
+            try:
+                return resp.json()
+            except ValueError as exc:
+                raise TransifexError(f"resposta não-JSON em {resp.url}") from exc
         raise AssertionError("unreachable")
 
     def _paginate(self, path: str, params: dict) -> Iterator[dict]:

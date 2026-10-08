@@ -12,6 +12,8 @@ Loja de recompensas para quem traduz a documentação da WPILib (`frc-docs`) par
 4. `uv run python manage.py track_resources` para cadastrar os recursos do frc-docs
 5. `uv run python manage.py runserver` e acesse http://localhost:8000
 
+- `LAUNCH_AT` (no `.env`) tem como padrão uma data futura; defina uma data passada para ver pontos localmente.
+
 ## Como os pontos funcionam
 
 - 2 pontos por palavra traduzida e 1 por palavra revisada (ajustável no admin em "Taxas de pontos").
