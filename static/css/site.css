@@ -503,3 +503,18 @@ select {
   color: var(--text);
   font: inherit;
 }
+
+.parked { margin: 8px 0 12px; }
+.redemptions { list-style: none; margin: 0; padding: 0; }
+.redemption { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.redemption:last-child { border-bottom: 0; }
+.redemption__main { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.redemption__meta { color: var(--muted); font-size: 0.9rem; }
+.redemption__line { margin: 6px 0 0; }
+.redemption form { margin-top: 8px; }
+.pill--status { background: var(--muted); }
+.pill--requested { background: var(--amber); }
+.pill--approved, .pill--shipping_paid { background: var(--blue); }
+.pill--shipped, .pill--ready_for_pickup { background: #7a4ff0; }
+.pill--delivered { background: var(--green); }
+.pill--rejected, .pill--cancelled { background: var(--red); }

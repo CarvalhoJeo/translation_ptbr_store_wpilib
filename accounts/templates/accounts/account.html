@@ -15,15 +15,52 @@
       <p><span class="pill pill--ok">Vinculado</span> como <strong>{{ profile.transifex_username }}</strong>.</p>
     {% elif profile.link_status == "pending" %}
       <p><span class="pill pill--wait">Aguardando aprovação</span> pedido de vínculo com <strong>{{ profile.transifex_username }}</strong>.</p>
+      {% if parked_points %}<p class="parked">⏳ <strong>{{ parked_points }} pontos guardados</strong> aguardando aprovação.</p>{% endif %}
+    {% elif profile.link_status == "rejected" %}
+      <p><span class="pill pill--no">Recusado</span> Seu pedido anterior foi recusado. Confira o nome e tente de novo.</p>
     {% endif %}
     {% if can_request %}
-      {% if profile.link_status == "rejected" %}<p><span class="pill pill--no">Recusado</span> Seu pedido anterior foi recusado. Confira o nome e tente de novo.</p>{% endif %}
       <form method="post" class="form">
-        {% csrf_token %}
+        {% csrf_token %}<input type="hidden" name="form" value="link">
         {{ form.as_p }}
-        <button class="btn btn--blue" type="submit">Pedir vínculo</button>
+        <button class="btn btn--blue" type="submit">{% if profile.link_status == "pending" %}Corrigir nome{% else %}Pedir vínculo{% endif %}</button>
       </form>
     {% endif %}
+  </section>
+
+  <section class="card">
+    <h2 class="card__title">Meus resgates</h2>
+    {% if redemptions %}
+      <ul class="redemptions">
+        {% for r in redemptions %}
+          <li class="redemption">
+            <div class="redemption__main">
+              <strong>#{{ r.pk }} {{ r.variant }}</strong>
+              <span class="pill pill--status pill--{{ r.status }}">{{ r.get_status_display }}</span>
+              <span class="redemption__meta">{{ r.cost }} pontos · {{ r.get_delivery_display }} · {{ r.created_at|date:"d/m/Y" }}</span>
+            </div>
+            {% if r.tracking_code %}<p class="redemption__line">Rastreio: <a href="{{ r.tracking_url }}">{{ r.tracking_code }}</a></p>{% endif %}
+            {% if r.admin_note %}<p class="redemption__line">📝 {{ r.admin_note }}</p>{% endif %}
+            {% if r.status == "requested" %}
+              <form method="post" action="{% url 'shop_cancel' r.pk %}">
+                {% csrf_token %}<button class="btn btn--light-dark" type="submit">Cancelar</button>
+              </form>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty">Nenhum resgate ainda. <a href="{% url 'shop_catalog' %}">Ver a loja</a></p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2 class="card__title">E-mail</h2>
+    <form method="post" class="form">
+      {% csrf_token %}<input type="hidden" name="form" value="email">
+      {{ email_form.as_p }}
+      <button class="btn btn--blue" type="submit">Salvar e-mail</button>
+    </form>
   </section>
 
   <section class="card">
