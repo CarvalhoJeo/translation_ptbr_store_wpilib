@@ -1,41 +1,52 @@
 {% extends "base.html" %}
 {% block title %}Minha conta — Loja de Traduções WPILib{% endblock %}
 {% block content %}
-  <h1>Minha conta</h1>
-  <p><strong>{{ balance }} pontos</strong> disponíveis</p>
+  <div class="account-head">
+    <h1>Minha conta</h1>
+    <div class="coin" role="status">
+      <span class="coin__icon" aria-hidden="true">★</span>
+      <span class="coin__text"><strong>{{ balance }} pontos</strong> disponíveis</span>
+    </div>
+  </div>
 
-  <h2>Transifex</h2>
-  {% if profile.link_status == "approved" %}
-    <p>Vinculado a <strong>{{ profile.transifex_username }}</strong>.</p>
-  {% elif profile.link_status == "pending" %}
-    <p>Pedido de vínculo com <strong>{{ profile.transifex_username }}</strong> aguardando aprovação.</p>
-  {% endif %}
-  {% if can_request %}
-    {% if profile.link_status == "rejected" %}<p>Seu pedido anterior foi recusado. Confira o nome e tente de novo.</p>{% endif %}
-    <form method="post">
-      {% csrf_token %}
-      {{ form.as_p }}
-      <button type="submit">Pedir vínculo</button>
-    </form>
-  {% endif %}
+  <section class="card">
+    <h2 class="card__title">Transifex</h2>
+    {% if profile.link_status == "approved" %}
+      <p><span class="pill pill--ok">Vinculado</span> como <strong>{{ profile.transifex_username }}</strong>.</p>
+    {% elif profile.link_status == "pending" %}
+      <p><span class="pill pill--wait">Aguardando aprovação</span> pedido de vínculo com <strong>{{ profile.transifex_username }}</strong>.</p>
+    {% endif %}
+    {% if can_request %}
+      {% if profile.link_status == "rejected" %}<p><span class="pill pill--no">Recusado</span> Seu pedido anterior foi recusado. Confira o nome e tente de novo.</p>{% endif %}
+      <form method="post" class="form">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button class="btn btn--blue" type="submit">Pedir vínculo</button>
+      </form>
+    {% endif %}
+  </section>
 
-  <h2>Histórico</h2>
-  {% if entries %}
-    <table>
-      <thead><tr><th>Data</th><th>Tipo</th><th>Palavras</th><th>Pontos</th><th>Obs.</th></tr></thead>
-      <tbody>
-      {% for entry in entries %}
-        <tr>
-          <td>{{ entry.occurred_at|default:entry.created_at|date:"d/m/Y H:i" }}</td>
-          <td>{{ entry.get_kind_display }}</td>
-          <td>{{ entry.words|default:"" }}</td>
-          <td>{{ entry.amount }}</td>
-          <td>{{ entry.note }}</td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <p>Nenhum ponto ainda. Traduções e revisões feitas no Transifex depois do lançamento aparecem aqui.</p>
-  {% endif %}
+  <section class="card">
+    <h2 class="card__title">Histórico</h2>
+    {% if entries %}
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Data</th><th>Tipo</th><th class="col-opt">Palavras</th><th>Pontos</th><th class="col-opt">Obs.</th></tr></thead>
+          <tbody>
+          {% for entry in entries %}
+            <tr>
+              <td class="date">{{ entry.occurred_at|default:entry.created_at|date:"d/m/Y H:i" }}</td>
+              <td><span class="tag tag--{{ entry.kind }}">{{ entry.get_kind_display }}</span></td>
+              <td class="col-opt">{{ entry.words|default:"" }}</td>
+              <td class="amount {% if entry.amount < 0 %}amount--neg{% else %}amount--pos{% endif %}">{% if entry.amount > 0 %}+{% endif %}{{ entry.amount }}</td>
+              <td class="col-opt">{{ entry.note }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="empty">Nenhum ponto ainda. Traduções e revisões feitas no Transifex depois do lançamento aparecem aqui.</p>
+    {% endif %}
+  </section>
 {% endblock %}
