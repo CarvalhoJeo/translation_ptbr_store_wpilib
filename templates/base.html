@@ -10,7 +10,7 @@
     <a href="{% url 'home' %}">Loja de Traduções WPILib</a>
     <nav>
       {% if user.is_authenticated %}
-        {% block account_link %}{% endblock %}
+        <a href="{% url 'account' %}">Minha conta</a>
         <form method="post" action="{% url 'account_logout' %}" style="display:inline">
           {% csrf_token %}<button type="submit">Sair</button>
         </form>
