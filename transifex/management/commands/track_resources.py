@@ -2,7 +2,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 from transifex.client import TransifexClient
-from transifex.models import TrackedResource
+from transifex.sync import track_project_resources
 
 
 class Command(BaseCommand):
@@ -15,7 +15,5 @@ class Command(BaseCommand):
         if not settings.TRANSIFEX_API_TOKEN:
             raise CommandError("TRANSIFEX_API_TOKEN não configurado no .env.")
         client = TransifexClient(settings.TRANSIFEX_API_TOKEN)
-        added = sum(
-            TrackedResource.objects.get_or_create(resource_id=rid)[1] for rid in client.iter_resources(project)
-        )
+        added = track_project_resources(client, project)
         self.stdout.write(self.style.SUCCESS(f"{added} recursos novos cadastrados."))

@@ -3,15 +3,40 @@ import os
 from pathlib import Path
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
+# Vercel sets VERCEL=1 at build and runtime; there, config comes only from project env vars.
+ON_VERCEL = bool(os.environ.get("VERCEL"))
+if not ON_VERCEL:
+    load_dotenv(BASE_DIR / ".env")
 
 DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() == "true"
-# Dev-only fallback; `manage.py check --deploy` flags the django-insecure- prefix.
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY") or "django-insecure-dev-only"
-ALLOWED_HOSTS = [h for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h]
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "")
+if not SECRET_KEY:
+    if ON_VERCEL:
+        raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set on Vercel.")
+    # Dev-only fallback; `manage.py check --deploy` flags the django-insecure- prefix.
+    SECRET_KEY = "django-insecure-dev-only"
+
+_vercel_hosts = [
+    os.environ[name]
+    for name in ("VERCEL_URL", "VERCEL_BRANCH_URL", "VERCEL_PROJECT_PRODUCTION_URL")
+    if os.environ.get(name)
+]
+ALLOWED_HOSTS = [
+    h for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h
+] + _vercel_hosts
+CSRF_TRUSTED_ORIGINS = [
+    o for o in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if o
+] + [f"https://{h}" for h in _vercel_hosts]
+
+if ON_VERCEL:
+    # Vercel terminates TLS and forwards the original scheme.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -96,6 +121,10 @@ SOCIALACCOUNT_PROVIDERS = {
 TRANSIFEX_API_TOKEN = os.environ.get("TRANSIFEX_API_TOKEN", "")
 TRANSIFEX_PROJECT = "o:wpilib:p:frc-docs"
 TRANSIFEX_LANGUAGE = "l:pt"
+# Vercel sends this as "Authorization: Bearer <CRON_SECRET>" when invoking /cron/sync/.
+CRON_SECRET = os.environ.get("CRON_SECRET", "")
+# Stay under Vercel Hobby's 300 s function limit; unreached resources go first next run.
+SYNC_TIME_BUDGET_SECONDS = int(os.environ.get("SYNC_TIME_BUDGET_SECONDS", "240"))
 LAUNCH_AT = datetime.fromisoformat(os.environ.get("LAUNCH_AT") or "2026-11-01T00:00:00Z")
 if LAUNCH_AT.tzinfo is None:
     LAUNCH_AT = LAUNCH_AT.replace(tzinfo=timezone.utc)
