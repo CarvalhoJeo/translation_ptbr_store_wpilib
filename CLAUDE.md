@@ -8,7 +8,7 @@ Design approved; no application code yet. The full design is in `docs/superpower
 
 ## What this is
 
-A reward store for the WPILib pt-BR translation team on Transifex. Translators earn points for words translated and reviewed in pt_BR (only after `LAUNCH_AT`) and redeem them for physical swag. Admins approve account links and redemptions. Stack: Django + Postgres, server-rendered pt-BR UI, GitHub login (django-allauth).
+A reward store for the WPILib pt-BR translation team on Transifex. Translators earn points for words translated and reviewed in Brazilian Portuguese (Transifex language code `pt`, not `pt_BR`; project `o:wpilib:p:frc-docs`), only after `LAUNCH_AT`, and redeem them for physical swag. Admins approve account links and redemptions. Stack: Django + Postgres, server-rendered pt-BR UI, GitHub login (django-allauth).
 
 ## Architecture rules that span multiple apps
 

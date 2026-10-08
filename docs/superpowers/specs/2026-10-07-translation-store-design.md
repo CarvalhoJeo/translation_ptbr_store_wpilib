@@ -15,7 +15,8 @@ Luca coordinates the WPILib pt-BR translation team on Transifex and wants to mot
 
 **Assumptions (correct me)**
 - UI in pt-BR.
-- Only the pt_BR language of WPILib projects counts; the admin picks which Transifex projects/resources are tracked.
+- Only the Brazilian Portuguese language counts. **On Transifex its code is `pt`, not `pt_BR`** (confirmed in the spike). The admin picks which resources are tracked; currently there is one project, `o:wpilib:p:frc-docs`.
+- Translations from translation memory (`origin: TM`, ~36% of the sample) earn **full points**, the same as `EDITOR` (user decision).
 - Point values are admin-configurable; the starting values are 2 pts/translated word and 1 pt/reviewed word.
 
 **Key research finding:** Transifex's per-user Activity Reports API is paid-only (Growth plan and up); open-source orgs have been refused it. The basic `GET /resource_translations` endpoint (filters: `resource` + `language` required, `date_translated[gt|lt]`, `translator`, `reviewed`…; relationships: `translator`, `reviewer`, `proofreader`, `resource_string`; timestamps `datetime_translated`/`datetime_reviewed`; 150/page) gives per-string attribution, so the store works out credit itself. The org's plan is unknown, so step 0 is a spike that confirms the endpoint works with Luca's token.
@@ -38,9 +39,9 @@ redemptions/    Redemption (status machine) + shipping info
 ## Data flow
 
 ### Sync (cron every 30–60 min: `manage.py sync_transifex`)
-1. For each tracked resource: `GET resource_translations?filter[resource]=…&filter[language]=l:pt_BR&filter[date_translated][gt]=<cursor>&include=resource_string`, paging through `links.next`.
-2. Also fetch `filter[reviewed]=true` with a datetime window, and keep entries whose `datetime_reviewed` is after the cursor. (The spike checks whether a review-date filter exists.)
-3. Emit events only for timestamps ≥ `LAUNCH_AT`. Word count = whitespace-split words of the source string after stripping placeholders/markup. Simple and predictable; the spike checks it against Transifex's own counts.
+1. For each tracked resource: `GET resource_translations?filter[resource]=…&filter[language]=l:pt&filter[date_translated][gt]=<cursor>&include=resource_string`, paging through `links.next`.
+2. Reviews: the API has **no review-date filter** (confirmed). Each sync fetches `filter[reviewed]=true` for each resource and emits a `reviewed` event for any string whose `datetime_reviewed` is ≥ `LAUNCH_AT` and has no review entry in the ledger yet. The unique key makes this a cheap diff.
+3. Emit events only for timestamps ≥ `LAUNCH_AT`. Word count = whitespace-split words of the source string after stripping placeholders/markup. The API doesn't expose per-string word counts (confirmed: `resource_string` has no `word_count`), so we compute them ourselves.
 4. For each event: look up the Profile by Transifex username. If one is **approved**, insert a `PointEntry`. If not, store it in `UnclaimedEvent` and credit it automatically when the link is approved, so people who sign up late lose nothing earned after launch.
 5. Advance the per-resource cursor only after the whole page set commits (one transaction per resource).
 
@@ -74,7 +75,7 @@ redemptions/    Redemption (status machine) + shipping info
 - Redemption tests check insufficient balance, out-of-stock, the refund on reject, and concurrent requests (no negative balance).
 
 ## Delivery steps
-0. **Spike (throwaway):** with Luca's API token, call `resource_translations` for one WPILib pt_BR resource. Confirm access on the org's plan, the project/resource slugs, the available review-date filter, and word-count behavior. Save the responses as test fixtures.
+0. **Spike — done 2026-10-07.** The free `resource_translations` endpoint works on WPILib's plan. Org `o:wpilib`, project `o:wpilib:p:frc-docs` (150+ resources), language `l:pt`. Every sampled translation has a `translator` (`u:<username>`). Sample: 529 translations, 336 EDITOR / 193 TM, 103 reviewed. `limit` is not accepted on this endpoint. `filter[date_translated][gt]` works; review-date filters return 400. Raw responses are in `spike/` (gitignored, contains real usernames).
 1. Scaffold Django + Postgres + allauth GitHub, with pt-BR locale.
 2. Accounts + Transifex linking + admin approval.
 3. Ledger + Transifex client + sync command (TDD against fixtures).
