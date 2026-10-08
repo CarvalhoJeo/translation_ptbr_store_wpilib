@@ -4,7 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-Design approved; no application code yet. The full design is in `docs/superpowers/specs/2026-10-07-translation-store-design.md`. Read it before making changes. Add build/test commands here once the Django project is scaffolded.
+Plan 1 (earning points: accounts, ledger, Transifex sync) is implemented. Plan 2 (catalog, redemptions, leaderboard, deploy) is not built yet. Design: `docs/superpowers/specs/2026-10-07-translation-store-design.md`. Plans: `docs/superpowers/plans/`.
+
+## Commands
+
+- Install: `uv sync`
+- Run tests: `uv run pytest` · one test: `uv run pytest tests/test_ledger.py::test_same_event_twice_is_ignored -v`
+- Dev server: `uv run python manage.py migrate && uv run python manage.py runserver`
+- Admin user: `uv run python manage.py createsuperuser`
+- Track all frc-docs resources: `uv run python manage.py track_resources`
+- Sync points (cron, every 30–60 min): `uv run python manage.py sync_transifex` (exits non-zero if any resource failed)
 
 ## What this is
 
