@@ -1,4 +1,5 @@
 import pytest
+from django.contrib.auth.models import Permission
 from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
 from django.core import mail
 
@@ -118,3 +119,21 @@ def test_change_page_shows_history_and_is_read_only(boss_client, ana):
 
 def test_admin_cannot_add_or_delete_redemptions(boss_client):
     assert boss_client.get("/admin/shop/redemption/add/").status_code == 403
+
+
+def test_view_only_staff_cannot_run_actions(client, ana, django_user_model):
+    r = new(ana)
+    viewer = django_user_model.objects.create_user("viewer", is_staff=True)
+    viewer.user_permissions.add(Permission.objects.get(codename="view_redemption"))
+    client.force_login(viewer)
+    act(client, "approve_selected", [r.pk])
+    assert Redemption.objects.get(pk=r.pk).status == "requested"
+    page = client.get("/admin/shop/redemption/")
+    assert page.status_code == 200
+    assert 'value="approve_selected"' not in page.content.decode()
+
+
+def test_detail_page_has_no_save_button(boss_client, ana):
+    r = new(ana)
+    html = boss_client.get(f"/admin/shop/redemption/{r.pk}/change/").content.decode()
+    assert 'name="_save"' not in html

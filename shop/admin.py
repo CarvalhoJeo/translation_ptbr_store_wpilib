@@ -130,6 +130,12 @@ class RedemptionAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         return False
 
+    def has_change_permission(self, request, obj=None):
+        # Edits happen only through the workflow actions; the detail page is read-only.
+        if obj is not None:
+            return False
+        return super().has_change_permission(request)
+
     def has_delete_permission(self, request, obj=None):
         return False
 
@@ -164,11 +170,11 @@ class RedemptionAdmin(admin.ModelAdmin):
         }
         return TemplateResponse(request, "admin/shop/redemption_text_action.html", context)
 
-    @admin.action(description="Aprovar")
+    @admin.action(description="Aprovar", permissions=["change"])
     def approve_selected(self, request, queryset):
         self._apply(request, queryset, services.approve, "aprovado(s)")
 
-    @admin.action(description="Recusar (devolve pontos)")
+    @admin.action(description="Recusar (devolve pontos)", permissions=["change"])
     def reject_selected(self, request, queryset):
         return self._apply_with_text(
             request,
@@ -180,11 +186,11 @@ class RedemptionAdmin(admin.ModelAdmin):
             kwarg="note",
         )
 
-    @admin.action(description="Marcar frete pago")
+    @admin.action(description="Marcar frete pago", permissions=["change"])
     def mark_paid_selected(self, request, queryset):
         self._apply(request, queryset, services.mark_shipping_paid, "com frete pago")
 
-    @admin.action(description="Marcar enviado (rastreio)")
+    @admin.action(description="Marcar enviado (rastreio)", permissions=["change"])
     def ship_selected(self, request, queryset):
         return self._apply_with_text(
             request,
@@ -196,7 +202,7 @@ class RedemptionAdmin(admin.ModelAdmin):
             kwarg="tracking_code",
         )
 
-    @admin.action(description="Pronto para retirar")
+    @admin.action(description="Pronto para retirar", permissions=["change"])
     def ready_selected(self, request, queryset):
         return self._apply_with_text(
             request,
@@ -208,6 +214,6 @@ class RedemptionAdmin(admin.ModelAdmin):
             kwarg="note",
         )
 
-    @admin.action(description="Marcar entregue")
+    @admin.action(description="Marcar entregue", permissions=["change"])
     def deliver_selected(self, request, queryset):
         self._apply(request, queryset, services.mark_delivered, "entregue(s)")
