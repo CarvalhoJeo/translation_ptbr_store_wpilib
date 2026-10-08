@@ -24,6 +24,7 @@ dev = [
 DJANGO_SETTINGS_MODULE = "store.settings"
 python_files = ["test_*.py"]
 pythonpath = ["."]
+markers = ["postgres: needs a real PostgreSQL for row-lock behaviour (skipped on SQLite)"]
 
 [tool.vercel.scripts]
 # Runs on every Vercel build (DATABASE_URL comes from the Neon integration).

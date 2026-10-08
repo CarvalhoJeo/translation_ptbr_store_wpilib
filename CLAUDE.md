@@ -4,12 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-Plan 1 (earning points: accounts, ledger, Transifex sync) is implemented. Plan 2 (catalog, redemptions, leaderboard, deploy) is not built yet. Design: `docs/superpowers/specs/2026-10-07-translation-store-design.md`. Plans: `docs/superpowers/plans/`.
+Plans 1 (earning points: accounts, ledger, Transifex sync) and 2 (catalog, redemptions, leaderboard, deploy) are implemented. Design: `docs/superpowers/specs/2026-10-07-translation-store-design.md`. Plans: `docs/superpowers/plans/`.
 
 ## Commands
 
 - Install: `uv sync`
 - Run tests: `uv run pytest` · one test: `uv run pytest tests/test_ledger.py::test_same_event_twice_is_ignored -v`
+- Postgres-only concurrency tests: `docker run -d --rm --name store-pg -e POSTGRES_PASSWORD=pg -p 55432:5432 postgres:17` then `DATABASE_URL=postgres://postgres:pg@localhost:55432/postgres uv run pytest -m postgres` (skipped on SQLite)
 - Dev server: `uv run python manage.py migrate && uv run python manage.py runserver`
 - Admin user: `uv run python manage.py createsuperuser`
 - Track all frc-docs resources: `uv run python manage.py track_resources`
@@ -21,6 +22,7 @@ Plan 1 (earning points: accounts, ledger, Transifex sync) is implemented. Plan 2
 - Postgres is Neon via the Vercel Marketplace (`DATABASE_URL` injected). SQLite does not persist on Vercel.
 - Vercel Cron calls `GET /cron/sync/` daily (Hobby allows only daily crons; `vercel.json`). The view checks `Authorization: Bearer $CRON_SECRET`, runs `track_project_resources`, then `sync_all` with a `SYNC_TIME_BUDGET_SECONDS` (240 s) deadline under the 300 s function limit; resources not reached go first next run (ordered by `last_synced_at`).
 - On Vercel (`VERCEL=1`) `.env` is ignored and a missing `DJANGO_SECRET_KEY` fails startup. `*.vercel.app` hosts come from `VERCEL_URL` / `VERCEL_PROJECT_PRODUCTION_URL` automatically.
+- Also set `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` (Gmail app password) and `BLOB_READ_WRITE_TOKEN` (from the Blob store). The daily cron also erases addresses delivered more than 30 days ago.
 - Deploy: `vercel deploy --prod`. Production env vars: `vercel env ls production`.
 
 ## What this is
@@ -34,6 +36,9 @@ A reward store for the WPILib pt-BR translation team on Transifex. Translators e
 - **The ledger is append-only.** Never update or delete `PointEntry` rows; corrections, refunds and redemptions are new entries. Balance = `SUM(amount)`.
 - **Points are idempotent per string.** The unique key `(source, string_key, kind)` means each string earns translation points once and review points once, and re-syncing is always safe.
 - **Redemptions** reserve points and stock in one transaction using `select_for_update`. Rejecting or cancelling a redemption writes a refund entry.
+- **`shop.services` owns every redemption state change.** Each runs in one transaction with `select_for_update` (variant + user row on request; redemption on transitions) and writes a `RedemptionEvent`. Points move only via ledger entries (`REDEMPTION` −cost, `REFUND` +cost). Never edit `Redemption.status` directly.
+- **E-mail is fire-after-commit** (`shop.notify.after_commit`). Failures are recorded as `RedemptionEvent` notes, never raised.
+- **Photos** go to a public Vercel Blob store via `shop.blob.upload_product_image` (needs `BLOB_READ_WRITE_TOKEN`); the model only stores `image_url`.
 - **Shipping addresses are personal data (LGPD).** They are wiped automatically after delivery.
 
 ## Secrets

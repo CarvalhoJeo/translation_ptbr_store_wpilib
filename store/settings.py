@@ -119,7 +119,7 @@ SOCIALACCOUNT_PROVIDERS = {
                 "key": "",
             }
         ],
-        "SCOPE": ["read:user"],
+        "SCOPE": ["read:user", "user:email"],
     }
 }
 
