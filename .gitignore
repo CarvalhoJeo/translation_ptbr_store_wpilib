@@ -36,3 +36,6 @@ spike/
 .agents/
 .claude/skills/
 skills-lock.json
+
+# Playwright MCP screenshots / snapshots
+.playwright-mcp/

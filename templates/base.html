@@ -1,27 +1,48 @@
-<!doctype html>
+{% load static socialaccount %}<!doctype html>
 <html lang="pt-br">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Loja de Traduções WPILib{% endblock %}</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 rx=%2224%22 fill=%22%23ffc531%22/%3E%3Ctext x=%2250%22 y=%2268%22 font-size=%2252%22 font-weight=%22900%22 text-anchor=%22middle%22 fill=%22%23142f86%22 font-family=%22sans-serif%22%3EPT%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap">
+  <link rel="stylesheet" href="{% static 'css/site.css' %}">
+  {% block extra_head %}{% endblock %}
 </head>
 <body>
-  <header>
-    <a href="{% url 'home' %}">Loja de Traduções WPILib</a>
-    <nav>
-      {% if user.is_authenticated %}
-        <a href="{% url 'account' %}">Minha conta</a>
-        <form method="post" action="{% url 'account_logout' %}" style="display:inline">
-          {% csrf_token %}<button type="submit">Sair</button>
-        </form>
-      {% else %}
-        <a href="{% url 'account_login' %}">Entrar com GitHub</a>
-      {% endif %}
-    </nav>
+  <header class="topbar">
+    <div class="topbar__inner">
+      <a class="brand" href="{% url 'home' %}">
+        <span class="brand__badge" aria-hidden="true">PT</span>
+        <span class="brand__name">Loja de Traduções <strong>WPILib</strong></span>
+      </a>
+      <nav class="nav">
+        {% if user.is_authenticated %}
+          <a class="nav__link" href="{% url 'account' %}">Minha conta</a>
+          <form method="post" action="{% url 'account_logout' %}">
+            {% csrf_token %}<button class="btn btn--ghost" type="submit">Sair</button>
+          </form>
+        {% else %}
+          <a class="btn btn--light" href="{% provider_login_url 'github' process='login' %}">Entrar com GitHub</a>
+        {% endif %}
+      </nav>
+    </div>
   </header>
+
   {% if messages %}
-    <ul>{% for message in messages %}<li>{{ message }}</li>{% endfor %}</ul>
+    <ul class="toasts">
+      {% for message in messages %}<li class="toast toast--{{ message.tags|default:'info' }}">{{ message }}</li>{% endfor %}
+    </ul>
   {% endif %}
-  <main>{% block content %}{% endblock %}</main>
+
+  <main class="page {% block page_class %}{% endblock %}">{% block content %}{% endblock %}</main>
+
+  <footer class="footer">
+    Feito pela equipe de tradução pt-BR da WPILib ·
+    <a href="https://app.transifex.com/wpilib/frc-docs/">frc-docs no Transifex</a>
+  </footer>
+  {% block extra_body %}{% endblock %}
 </body>
 </html>

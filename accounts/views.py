@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 
+from ledger.models import PointRates
 from ledger.services import balance
 
 from .forms import LinkForm
@@ -10,7 +11,7 @@ from .services import LinkError, get_profile, request_link
 
 
 def home(request):
-    return render(request, "accounts/home.html")
+    return render(request, "accounts/home.html", {"rates": PointRates.current()})
 
 
 @login_required

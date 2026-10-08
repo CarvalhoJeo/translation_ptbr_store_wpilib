@@ -1,5 +1,38 @@
 {% extends "base.html" %}
+{% load socialaccount %}
 {% block content %}
-  <h1>Loja de Traduções WPILib</h1>
-  <p>Traduza a documentação da WPILib para o português no Transifex, ganhe pontos e troque por brindes.</p>
+  <section class="hero">
+    <p class="hero__eyebrow">Equipe de tradução pt-BR</p>
+    <h1 class="hero__title">Traduza a WPILib. <span class="hl">Ganhe pontos.</span> Troque por brindes.</h1>
+    <p class="hero__lead">Cada palavra que você traduz ou revisa na documentação da WPILib no Transifex vira pontos na sua conta.</p>
+    <div class="hero__actions">
+      {% if user.is_authenticated %}
+        <a class="btn btn--gold btn--big" href="{% url 'account' %}">Ver meus pontos</a>
+      {% else %}
+        <a class="btn btn--gold btn--big" href="{% provider_login_url 'github' process='login' %}">Começar com GitHub</a>
+      {% endif %}
+      <a class="btn btn--ghost-dark btn--big" href="https://app.transifex.com/wpilib/frc-docs/">Abrir o Transifex</a>
+    </div>
+  </section>
+
+  <section class="steps" aria-labelledby="how">
+    <h2 id="how" class="section-title">Como funciona</h2>
+    <ol class="steps__list">
+      <li class="step step--blue">
+        <span class="step__num">1</span>
+        <h3>Vincule sua conta</h3>
+        <p>Entre com o GitHub e informe seu usuário do Transifex. Um admin aprova o vínculo.</p>
+      </li>
+      <li class="step step--red">
+        <span class="step__num">2</span>
+        <h3>Traduza e revise</h3>
+        <p><strong>{{ rates.translated_word }} ponto{{ rates.translated_word|pluralize }}</strong> por palavra traduzida e <strong>{{ rates.reviewed_word }} ponto{{ rates.reviewed_word|pluralize }}</strong> por palavra revisada no frc-docs.</p>
+      </li>
+      <li class="step step--gold">
+        <span class="step__num">3</span>
+        <h3>Troque por brindes</h3>
+        <p>Use seus pontos na loja para resgatar brindes da equipe. Em breve!</p>
+      </li>
+    </ol>
+  </section>
 {% endblock %}
