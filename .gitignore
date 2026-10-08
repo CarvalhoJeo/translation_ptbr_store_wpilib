@@ -1,0 +1,28 @@
+# Secrets — never commit
+.env
+*.env
+!.env.example
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Django
+db.sqlite3
+media/
+staticfiles/
+
+# Raw Transifex API responses from the spike (may contain user data/tokens)
+spike/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
