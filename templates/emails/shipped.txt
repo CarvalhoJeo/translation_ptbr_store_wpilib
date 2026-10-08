@@ -1,0 +1,9 @@
+{% autoescape off %}Olá, {{ r.user.username }}!
+
+Seu resgate #{{ r.pk }} ({{ r.variant }}) foi enviado pelos Correios.
+
+Código de rastreio: {{ r.tracking_code }}
+Rastrear: {{ r.tracking_url }}
+
+— Equipe de tradução pt-BR da WPILib
+{% endautoescape %}

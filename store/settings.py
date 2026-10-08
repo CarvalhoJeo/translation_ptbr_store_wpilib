@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "accounts",
     "ledger",
     "transifex",
+    "shop",
 ]
 
 MIDDLEWARE = [
@@ -109,6 +110,7 @@ LOGIN_REDIRECT_URL = "account"
 ACCOUNT_LOGOUT_REDIRECT_URL = "home"
 SOCIALACCOUNT_ONLY = True
 ACCOUNT_EMAIL_VERIFICATION = "none"
+SOCIALACCOUNT_QUERY_EMAIL = True  # allauth only calls GitHub /user/emails when this is on
 SOCIALACCOUNT_PROVIDERS = {
     "github": {
         "APPS": [
@@ -118,7 +120,7 @@ SOCIALACCOUNT_PROVIDERS = {
                 "key": "",
             }
         ],
-        "SCOPE": ["read:user"],
+        "SCOPE": ["read:user", "user:email"],
     }
 }
 
@@ -132,3 +134,25 @@ SYNC_TIME_BUDGET_SECONDS = int(os.environ.get("SYNC_TIME_BUDGET_SECONDS", "240")
 LAUNCH_AT = datetime.fromisoformat(os.environ.get("LAUNCH_AT") or "2026-11-01T00:00:00Z")
 if LAUNCH_AT.tzinfo is None:
     LAUNCH_AT = LAUNCH_AT.replace(tzinfo=timezone.utc)
+
+# E-mail: Gmail SMTP when EMAIL_HOST_USER is set (production), console otherwise.
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+if EMAIL_HOST_USER:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = "smtp.gmail.com"
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    # Vercel holds the Gmail app password as GMAIL_APP_PASSWD; EMAIL_HOST_PASSWORD also works.
+    EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD") or os.environ.get("GMAIL_APP_PASSWD", "")
+    EMAIL_TIMEOUT = 15
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL") or (
+    f"Loja de Traduções WPILib <{EMAIL_HOST_USER}>" if EMAIL_HOST_USER else "Loja de Traduções WPILib <noreply@localhost>"
+)
+# Absolute links in e-mails.
+SITE_URL = os.environ.get("SITE_URL") or (
+    f"https://{os.environ['VERCEL_PROJECT_PRODUCTION_URL']}"
+    if os.environ.get("VERCEL_PROJECT_PRODUCTION_URL")
+    else "http://localhost:8000"
+)

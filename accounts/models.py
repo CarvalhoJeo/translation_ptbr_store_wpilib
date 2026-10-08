@@ -15,6 +15,8 @@ class Profile(models.Model):
     link_status = models.CharField(max_length=10, choices=LinkStatus.choices, default=LinkStatus.NONE)
 
     class Meta:
+        verbose_name = "perfil"
+        verbose_name_plural = "perfis"
         constraints = [
             models.UniqueConstraint(
                 Lower("transifex_username"),

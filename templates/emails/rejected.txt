@@ -1,0 +1,9 @@
+{% autoescape off %}Olá, {{ r.user.username }}.
+
+Seu resgate #{{ r.pk }} ({{ r.variant }}) foi recusado.
+{% if r.admin_note %}Motivo: {{ r.admin_note }}
+{% endif %}
+Seus {{ r.cost }} pontos foram devolvidos à sua conta.
+
+— Equipe de tradução pt-BR da WPILib
+{% endautoescape %}

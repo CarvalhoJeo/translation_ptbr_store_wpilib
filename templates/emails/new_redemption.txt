@@ -1,0 +1,8 @@
+{% autoescape off %}Novo resgate na Loja de Traduções WPILib
+
+#{{ r.pk }} — {{ r.user.username }} pediu: {{ r.variant }} ({{ r.cost }} pontos)
+Entrega: {{ r.get_delivery_display }}{% if r.delivery == "mail" %}
+Destino: {{ r.city }}/{{ r.uf }}{% endif %}
+
+Aprovar ou recusar: {{ admin_url }}
+{% endautoescape %}

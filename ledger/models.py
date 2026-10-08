@@ -38,6 +38,8 @@ class PointEntry(models.Model):
 
     class Meta:
         ordering = ["-created_at", "-pk"]
+        verbose_name = "lançamento de pontos"
+        verbose_name_plural = "lançamentos de pontos"
         constraints = [
             models.UniqueConstraint(
                 fields=["string_key", "kind"],
@@ -62,4 +64,6 @@ class UnclaimedEvent(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        verbose_name = "evento pendente"
+        verbose_name_plural = "eventos pendentes"
         constraints = [models.UniqueConstraint(fields=["string_key", "kind"], name="unique_unclaimed_per_string")]

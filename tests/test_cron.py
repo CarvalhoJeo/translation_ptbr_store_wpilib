@@ -64,6 +64,7 @@ def test_tracks_resources_syncs_and_reports(client, cron_settings, django_user_m
     assert (body["resources_ok"], body["resources_failed"], body["new_events"]) == (1, 0, 1)
     assert TrackedResource.objects.get().resource_id == RES
     assert balance(user) == 4  # 2 words × 2 points
+    assert body["addresses_erased"] == 0
 
 
 @responses.activate
@@ -82,3 +83,15 @@ def test_missing_transifex_token_is_a_server_error(client, cron_settings):
     cron_settings.TRANSIFEX_API_TOKEN = ""
     response = client.get("/cron/sync/", HTTP_AUTHORIZATION="Bearer s3cret-value-for-tests")
     assert response.status_code == 500
+    assert response.json()["addresses_erased"] == 0
+
+
+def test_address_erasure_failure_does_not_break_sync(client, cron_settings, monkeypatch):
+    def boom(now):
+        raise RuntimeError("db")
+
+    monkeypatch.setattr("transifex.views.erase_old_addresses", boom)
+    cron_settings.TRANSIFEX_API_TOKEN = ""
+    response = client.get("/cron/sync/", HTTP_AUTHORIZATION="Bearer s3cret-value-for-tests")
+    assert response.status_code == 500
+    assert response.json()["addresses_erased"] == -1

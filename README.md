@@ -21,4 +21,11 @@ Loja de recompensas para quem traduz a documentação da WPILib (`frc-docs`) par
 - Só conta o que foi feito a partir de `LAUNCH_AT`.
 - Quem traduziu antes de vincular a conta não perde nada: os pontos ficam guardados e são creditados quando o admin aprova o vínculo.
 
+## Loja e resgates
+
+- Produtos e variantes (tamanhos, cores) são cadastrados no admin, em Loja → Produtos.
+- O texto com as instruções de Pix para o frete fica em "Configurações da loja".
+- Etapas de um pedido: o membro solicita o resgate (pontos e estoque são reservados), o admin aprova, o brinde é enviado ou retirado e, por fim, marcado como entregue. Rejeitar ou cancelar devolve os pontos e o estoque.
+- Os admins recebem um e-mail a cada novo pedido e aprovam, rejeitam ou marcam como enviado/entregue pelas ações na lista de Resgates.
+
 Nunca commite o `.env`: este repositório é público.

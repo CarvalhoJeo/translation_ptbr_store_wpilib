@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Ranking — Loja de Traduções WPILib{% endblock %}
+{% block content %}
+  <div class="account-head">
+    <h1>Ranking</h1>
+    <nav class="toggle" aria-label="Período">
+      <a class="toggle__opt{% if not monthly %} toggle__opt--on{% endif %}" href="?">Total</a>
+      <a class="toggle__opt{% if monthly %} toggle__opt--on{% endif %}" href="?periodo=mes">Este mês</a>
+    </nav>
+  </div>
+  {% if rows %}
+    <ol class="ranking card">
+      {% for username, points in rows %}
+        <li class="ranking__row{% if forloop.counter <= 3 %} ranking__row--top{% endif %}">
+          <span class="ranking__pos">{% if forloop.counter == 1 %}🥇{% elif forloop.counter == 2 %}🥈{% elif forloop.counter == 3 %}🥉{% else %}{{ forloop.counter }}{% endif %}</span>
+          <span class="ranking__name">{{ username }}</span>
+          <span class="ranking__points">{{ points }} pts</span>
+        </li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    <p class="empty">Ninguém pontuou {% if monthly %}este mês{% else %}ainda{% endif %}. Que tal ser o primeiro?</p>
+  {% endif %}
+{% endblock %}

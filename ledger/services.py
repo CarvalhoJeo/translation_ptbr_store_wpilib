@@ -1,5 +1,8 @@
+from datetime import datetime
+
 from django.db import transaction
 from django.db.models import Sum
+from django.db.models.functions import Coalesce
 
 from accounts.models import Profile
 
@@ -37,6 +40,10 @@ def record_progress(event: ProgressEvent) -> bool:
 def claim_unclaimed(user, tx_username: str) -> int:
     with transaction.atomic():
         events = list(UnclaimedEvent.objects.select_for_update().filter(tx_username__iexact=tx_username))
+        already = set(
+            PointEntry.objects.filter(string_key__in=[e.string_key for e in events]).values_list("string_key", "kind")
+        )
+        fresh = [e for e in events if (e.string_key, e.kind) not in already]
         PointEntry.objects.bulk_create(
             PointEntry(
                 user=user,
@@ -46,11 +53,29 @@ def claim_unclaimed(user, tx_username: str) -> int:
                 words=e.words,
                 occurred_at=e.occurred_at,
             )
-            for e in events
+            for e in fresh
         )
         UnclaimedEvent.objects.filter(pk__in=[e.pk for e in events]).delete()
-    return len(events)
+    return len(fresh)
 
 
 def balance(user) -> int:
     return PointEntry.objects.filter(user=user).aggregate(total=Sum("amount"))["total"] or 0
+
+
+EARNING_KINDS = (PointEntry.Kind.TRANSLATED, PointEntry.Kind.REVIEWED, PointEntry.Kind.ADJUSTMENT)
+
+
+def leaderboard(since: datetime | None = None, limit: int = 100) -> list[tuple[str, int]]:
+    """Points earned (positive translated/reviewed/adjustment entries) by approved translators."""
+    entries = PointEntry.objects.filter(
+        kind__in=EARNING_KINDS, amount__gt=0, user__profile__link_status=Profile.LinkStatus.APPROVED
+    )
+    if since is not None:
+        entries = entries.annotate(earned_at=Coalesce("occurred_at", "created_at")).filter(earned_at__gte=since)
+    rows = (
+        entries.values("user__username")
+        .annotate(points=Sum("amount"))
+        .order_by("-points", "user__username")[:limit]
+    )
+    return [(row["user__username"], row["points"]) for row in rows]

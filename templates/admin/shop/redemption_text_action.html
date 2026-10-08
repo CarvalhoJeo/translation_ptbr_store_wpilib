@@ -1,0 +1,17 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<form method="post">
+  {% csrf_token %}
+  <p>Resgates selecionados:</p>
+  <ul>
+    {% for r in redemptions %}
+      <li>#{{ r.pk }} — {{ r.user }} — {{ r.variant }} ({{ r.get_status_display }}, {{ r.get_delivery_display }})</li>
+    {% endfor %}
+  </ul>
+  {{ form.as_p }}
+  <input type="hidden" name="action" value="{{ action }}">
+  <input type="hidden" name="apply" value="1">
+  <input type="submit" value="Confirmar">
+  <a href="{% url 'admin:shop_redemption_changelist' %}">Cancelar</a>
+</form>
+{% endblock %}
