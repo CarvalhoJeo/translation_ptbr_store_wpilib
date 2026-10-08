@@ -67,15 +67,18 @@ EARNING_KINDS = (PointEntry.Kind.TRANSLATED, PointEntry.Kind.REVIEWED, PointEntr
 
 
 def leaderboard(since: datetime | None = None, limit: int = 100) -> list[tuple[str, int]]:
-    """Points earned (positive translated/reviewed/adjustment entries) by approved translators."""
+    """Points earned by approved translators: translations, reviews and admin adjustments
+    (negative adjustments count, so correcting a mistaken bonus also corrects the ranking).
+    Redemptions and refunds never affect the ranking."""
     entries = PointEntry.objects.filter(
-        kind__in=EARNING_KINDS, amount__gt=0, user__profile__link_status=Profile.LinkStatus.APPROVED
+        kind__in=EARNING_KINDS, user__profile__link_status=Profile.LinkStatus.APPROVED
     )
     if since is not None:
         entries = entries.annotate(earned_at=Coalesce("occurred_at", "created_at")).filter(earned_at__gte=since)
     rows = (
         entries.values("user__username")
         .annotate(points=Sum("amount"))
+        .filter(points__gt=0)
         .order_by("-points", "user__username")[:limit]
     )
     return [(row["user__username"], row["points"]) for row in rows]
