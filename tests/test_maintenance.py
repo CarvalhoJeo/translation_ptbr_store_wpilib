@@ -29,6 +29,22 @@ def test_erases_addresses_delivered_more_than_30_days_ago(django_user_model):
     assert erase_old_addresses(NOW) == 0
 
 
+@pytest.mark.parametrize("status", ["rejected", "cancelled"])
+def test_erases_addresses_of_refused_orders_after_30_days(django_user_model, status):
+    ana = make_user(django_user_model)
+    old = make_redemption(ana, make_product(name="A"), status=status)
+    recent = make_redemption(ana, make_product(name="B"), status=status)
+    Redemption.objects.filter(pk=old.pk).update(updated_at=NOW - timedelta(days=31))
+    Redemption.objects.filter(pk=recent.pk).update(updated_at=NOW - timedelta(days=29))
+
+    assert erase_old_addresses(NOW) == 1
+
+    old.refresh_from_db()
+    assert all(getattr(old, f) == "" for f in Redemption.ADDRESS_FIELDS)
+    assert old.address_erased_at == NOW
+    assert Redemption.objects.get(pk=recent.pk).full_name == "Ana Silva"
+
+
 def test_claim_skips_events_already_credited(django_user_model):
     ana = make_user(django_user_model, approved=False)
     when = datetime(2026, 11, 2, tzinfo=timezone.utc)

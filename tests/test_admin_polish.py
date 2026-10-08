@@ -49,3 +49,18 @@ def test_admin_index_uses_portuguese_names(admin_client_logged):
     for label in ["Perfis", "Lançamentos de pontos", "Eventos pendentes", "Tradutores", "Pontos"]:
         assert label in html
     assert "Point entrys" not in html
+
+
+def test_negative_adjustment_cannot_make_balance_negative(admin_client_logged, django_user_model):
+    from ledger.services import balance
+
+    client, _ = admin_client_logged
+    target = django_user_model.objects.create_user("ana")
+    PointEntry.objects.create(user=target, amount=30, kind=PointEntry.Kind.ADJUSTMENT, note="x")
+    response = client.post("/admin/ledger/pointentry/add/", {"user": target.pk, "amount": -50, "note": "Correção"})
+    assert response.status_code == 200
+    assert "O ajuste deixaria o saldo negativo (saldo atual: 30)." in response.content.decode()
+    assert balance(target) == 30
+
+    ok = client.post("/admin/ledger/pointentry/add/", {"user": target.pk, "amount": -30, "note": "Correção"})
+    assert ok.status_code == 302 and balance(target) == 0

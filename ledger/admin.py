@@ -2,6 +2,7 @@ from django import forms
 from django.contrib import admin
 
 from .models import PointEntry, PointRates, UnclaimedEvent
+from .services import balance
 
 
 @admin.register(PointRates)
@@ -19,6 +20,15 @@ class AdjustmentForm(forms.ModelForm):
     class Meta:
         model = PointEntry
         fields = ["user", "amount", "note"]
+
+    def clean(self):
+        cleaned = super().clean()
+        user, amount = cleaned.get("user"), cleaned.get("amount")
+        if user and amount is not None and amount < 0:
+            current = balance(user)
+            if current + amount < 0:
+                raise forms.ValidationError(f"O ajuste deixaria o saldo negativo (saldo atual: {current}).")
+        return cleaned
 
 
 @admin.register(PointEntry)

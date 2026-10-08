@@ -59,6 +59,13 @@ class RedemptionForm(forms.Form):
             for name in Redemption.REQUIRED_ADDRESS_FIELDS:
                 if not cleaned.get(name) and name not in self.errors:
                     self.add_error(name, "Obrigatório para envio pelos Correios.")
+            if any(name in self.errors for name in Redemption.ADDRESS_FIELDS):
+                self.add_error(None, "Confira o endereço de envio.")
+        else:
+            # Pickup: the address is irrelevant, so junk in hidden fields must not block the submit.
+            for name in Redemption.ADDRESS_FIELDS:
+                self.errors.pop(name, None)
+                cleaned.pop(name, None)
         return cleaned
 
     def address(self) -> dict:

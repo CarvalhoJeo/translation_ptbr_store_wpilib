@@ -110,6 +110,7 @@ LOGIN_REDIRECT_URL = "account"
 ACCOUNT_LOGOUT_REDIRECT_URL = "home"
 SOCIALACCOUNT_ONLY = True
 ACCOUNT_EMAIL_VERIFICATION = "none"
+SOCIALACCOUNT_QUERY_EMAIL = True  # allauth only calls GitHub /user/emails when this is on
 SOCIALACCOUNT_PROVIDERS = {
     "github": {
         "APPS": [

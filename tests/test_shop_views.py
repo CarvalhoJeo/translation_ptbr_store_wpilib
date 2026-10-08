@@ -74,6 +74,7 @@ def test_mail_request_validates_address(client, ana):
     html = response.content.decode()
     assert response.status_code == 200
     assert "CEP inválido" in html
+    assert "Confira o endereço de envio." in html
     assert not Redemption.objects.exists()
 
     response = client.post(f"/loja/{product.pk}/resgatar/", {**base, "full_name": "Ana Silva"})
@@ -127,3 +128,27 @@ def test_cannot_cancel_someone_elses(client, ana, django_user_model):
     r = services.request_redemption(ana, make_product().variants.get().pk, "pickup")
     client.force_login(make_user(django_user_model, username="bia", tx="bob", email="b@example.com"))
     assert client.post(f"/loja/resgates/{r.pk}/cancelar/").status_code == 404
+
+
+def test_pickup_ignores_junk_address_input(client, ana):
+    product = make_product(cost=100)
+    client.force_login(ana)
+    data = {
+        "variant": product.variants.get().pk,
+        "delivery": "pickup",
+        "request_token": str(uuid.uuid4()),
+        "cep": "123",
+        "uf": "XX",
+    }
+    response = client.post(f"/loja/{product.pk}/resgatar/", data)
+    assert response.status_code == 302
+    assert Redemption.objects.get().delivery == "pickup"
+
+
+def test_sold_out_product_redirects_to_catalog(client, ana):
+    product = make_product(variants=(("P", 0), ("M", 0)))
+    client.force_login(ana)
+    response = client.get(f"/loja/{product.pk}/resgatar/")
+    assert response.status_code == 302 and response["Location"] == "/loja/"
+    followed = client.get(f"/loja/{product.pk}/resgatar/", follow=True)
+    assert "Este brinde esgotou." in followed.content.decode()

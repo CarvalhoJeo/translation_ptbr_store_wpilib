@@ -76,6 +76,20 @@ def test_ship_with_tracking(boss_client, ana, boss):
     assert (r.status, r.tracking_code) == ("shipped", "AA123456789BR")
 
 
+def test_ship_refuses_selection_spanning_several_users(boss_client, ana, boss, django_user_model):
+    bia = make_user(django_user_model, username="bia", tx="bia", email="bia@example.com")
+    give_points(bia, 1000)
+    a, b = new(ana, name="A"), new(bia, name="B")
+    for r in (a, b):
+        services.approve(r, boss)
+        services.mark_shipping_paid(r, boss)
+
+    response = act(boss_client, "ship_selected", [a.pk, b.pk], apply="1", text="BR1")
+
+    assert "Selecione resgates de um único tradutor" in response.content.decode()
+    assert {Redemption.objects.get(pk=r.pk).status for r in (a, b)} == {"shipping_paid"}
+
+
 def test_mixed_selection_reports_per_row_errors(boss_client, ana, boss):
     paid = new(ana, name="A")
     services.approve(paid, boss)

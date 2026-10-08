@@ -30,9 +30,16 @@ def cron_sync(request):
     """Daily Vercel Cron entry point: track new resources, then sync within the time budget."""
     if not _is_vercel_cron(request):
         return HttpResponse(status=401)
+    try:
+        addresses_erased = erase_old_addresses(timezone.now())
+    except Exception:
+        logger.exception("falha ao apagar endereços antigos")
+        addresses_erased = -1
     if not settings.TRANSIFEX_API_TOKEN:
         logger.error("TRANSIFEX_API_TOKEN não configurado")
-        return JsonResponse({"error": "TRANSIFEX_API_TOKEN não configurado"}, status=500)
+        return JsonResponse(
+            {"error": "TRANSIFEX_API_TOKEN não configurado", "addresses_erased": addresses_erased}, status=500
+        )
 
     deadline = time.monotonic() + settings.SYNC_TIME_BUDGET_SECONDS
     client = TransifexClient(settings.TRANSIFEX_API_TOKEN)
@@ -47,6 +54,6 @@ def cron_sync(request):
     source = ResourceTranslationsSource(client, settings.TRANSIFEX_LANGUAGE, settings.LAUNCH_AT)
     result = sync_all(source, timezone.now(), settings.LAUNCH_AT, deadline=deadline)
     body.update(asdict(result))
-    body["addresses_erased"] = erase_old_addresses(timezone.now())
+    body["addresses_erased"] = addresses_erased
     logger.info("cron sync: %s", body)
     return JsonResponse(body)

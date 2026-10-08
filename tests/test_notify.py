@@ -98,3 +98,23 @@ def test_failure_while_recording_failure_does_not_raise(ana, monkeypatch):
     monkeypatch.setattr(notify.RedemptionEvent.objects, "create", lambda **k: (_ for _ in ()).throw(RuntimeError("db down")))
     r = make_redemption(ana, make_product(), status="approved")
     notify.approved(r.pk)  # must not raise
+
+
+def test_no_recipients_records_a_note(ana):
+    r = make_redemption(ana, make_product(name="Caneca"))
+    notify.new_redemption(r.pk)
+    assert len(mail.outbox) == 0
+    note = RedemptionEvent.objects.get(redemption=r).note
+    assert "e-mail não enviado (new_redemption)" in note and "nenhum destinatário" in note
+
+
+def test_notification_errors_never_propagate(ana, monkeypatch):
+    def boom(_):
+        raise RuntimeError("db down")
+
+    monkeypatch.setattr(notify, "_load", boom)
+    notify.approved(1)
+    notify.new_redemption(1)
+    notify.shipped(1)
+    notify.ready_for_pickup(1)
+    notify.rejected(1)

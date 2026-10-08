@@ -192,6 +192,13 @@ class RedemptionAdmin(admin.ModelAdmin):
 
     @admin.action(description="Marcar enviado (rastreio)", permissions=["change"])
     def ship_selected(self, request, queryset):
+        if queryset.values("user_id").distinct().count() > 1:
+            self.message_user(
+                request,
+                "Selecione resgates de um único tradutor para usar o mesmo código de rastreio.",
+                messages.ERROR,
+            )
+            return None
         return self._apply_with_text(
             request,
             queryset,

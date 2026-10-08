@@ -1,3 +1,4 @@
+import functools
 import logging
 
 from django.conf import settings
@@ -13,16 +14,36 @@ logger = logging.getLogger(__name__)
 
 def after_commit(func, redemption_id: int) -> None:
     """Send only if the surrounding transaction commits."""
-    transaction.on_commit(lambda: func(redemption_id))
+    transaction.on_commit(lambda: func(redemption_id), robust=True)
 
 
 def _load(redemption_id: int) -> Redemption:
     return Redemption.objects.select_related("user", "variant__product").get(pk=redemption_id)
 
 
+def _guarded(func):
+    """Notification senders run after commit: whatever goes wrong must never surface as an error."""
+
+    @functools.wraps(func)
+    def wrapper(redemption_id: int) -> None:
+        try:
+            func(redemption_id)
+        except Exception:
+            logger.exception("falha na notificação %s do resgate %s", func.__name__, redemption_id)
+
+    return wrapper
+
+
 def _send(redemption: Redemption, template: str, recipients, subject: str, extra: dict | None = None) -> None:
     recipients = [address for address in recipients if address]
     if not recipients:
+        logger.warning("e-mail %s do resgate %s não enviado: nenhum destinatário com e-mail", template, redemption.pk)
+        try:
+            RedemptionEvent.objects.create(
+                redemption=redemption, note=f"e-mail não enviado ({template}): nenhum destinatário com e-mail"
+            )
+        except Exception:
+            logger.exception("não foi possível registrar a falta de destinatário do resgate %s", redemption.pk)
         return
     try:
         body = render_to_string(f"emails/{template}.txt", {"r": redemption, "site_url": settings.SITE_URL, **(extra or {})})
@@ -37,6 +58,7 @@ def _send(redemption: Redemption, template: str, recipients, subject: str, extra
             logger.exception("não foi possível registrar a falha de e-mail do resgate %s", redemption.pk)
 
 
+@_guarded
 def new_redemption(redemption_id: int) -> None:
     r = _load(redemption_id)
     staff = (
@@ -50,22 +72,26 @@ def new_redemption(redemption_id: int) -> None:
     _send(r, "new_redemption", list(staff), f"Novo resgate #{r.pk}: {r.variant}", {"admin_url": admin_url})
 
 
+@_guarded
 def approved(redemption_id: int) -> None:
     r = _load(redemption_id)
     extra = {"pix_instructions": StoreSettings.current().pix_instructions}
     _send(r, "approved", [r.user.email], f"Seu resgate #{r.pk} foi aprovado", extra)
 
 
+@_guarded
 def shipped(redemption_id: int) -> None:
     r = _load(redemption_id)
     _send(r, "shipped", [r.user.email], f"Seu resgate #{r.pk} foi enviado")
 
 
+@_guarded
 def ready_for_pickup(redemption_id: int) -> None:
     r = _load(redemption_id)
     _send(r, "ready_for_pickup", [r.user.email], f"Seu resgate #{r.pk} está pronto para retirar")
 
 
+@_guarded
 def rejected(redemption_id: int) -> None:
     r = _load(redemption_id)
     _send(r, "rejected", [r.user.email], f"Seu resgate #{r.pk} foi recusado")

@@ -27,6 +27,9 @@ def catalog(request):
 @login_required
 def request_view(request, product_id: int):
     product = get_object_or_404(Product, pk=product_id, active=True)
+    if not product.variants.filter(active=True, stock__gt=0).exists():
+        messages.error(request, "Este brinde esgotou.")
+        return redirect("shop_catalog")
     form = RedemptionForm(product, request.POST or None)
     if request.method == "POST" and form.is_valid():
         try:
