@@ -28,14 +28,18 @@ def request_redemption(
         existing = Redemption.objects.filter(request_token=token, user=user).first()
         if existing:
             return existing
-    if get_profile(user).link_status != Profile.LinkStatus.APPROVED:
-        raise RedemptionError("Vincule sua conta do Transifex antes de resgatar.")
 
     with transaction.atomic():
         # Lock the user row so concurrent requests by the same person see each other's debits.
         get_user_model().objects.select_for_update().get(pk=user.pk)
+        if token is not None:
+            existing = Redemption.objects.filter(request_token=token, user=user).first()
+            if existing:
+                return existing
+        if get_profile(user).link_status != Profile.LinkStatus.APPROVED:
+            raise RedemptionError("Vincule sua conta do Transifex antes de resgatar.")
         try:
-            variant = Variant.objects.select_for_update().select_related("product").get(pk=variant_id)
+            variant = Variant.objects.select_for_update(of=("self",)).select_related("product").get(pk=variant_id)
         except Variant.DoesNotExist:
             raise RedemptionError("Produto não encontrado.")
         product = variant.product
@@ -149,6 +153,7 @@ def mark_shipped(redemption, actor, tracking_code: str) -> Redemption:
         to=Status.SHIPPED,
         actor=actor,
         note=tracking_code,
+        only_delivery=Delivery.MAIL,
         updates={"tracking_code": tracking_code},
     )
     notify.after_commit(notify.shipped, r.pk)

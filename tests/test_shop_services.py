@@ -188,3 +188,40 @@ def test_events_record_actor(ana, boss):
     r = services.request_redemption(ana, variant_of(make_product()).pk, "pickup")
     services.approve(r, boss)
     assert RedemptionEvent.objects.filter(redemption=r, status_to="approved", actor=boss).exists()
+
+
+def test_reject_twice_refunds_once(ana, boss):
+    r = services.request_redemption(ana, variant_of(make_product(cost=100)).pk, "pickup")
+    services.reject(r, boss, "motivo")
+    with pytest.raises(RedemptionError):
+        services.reject(r, boss, "de novo")
+    assert balance(ana) == 500
+    assert PointEntry.objects.filter(kind=PointEntry.Kind.REFUND).count() == 1
+
+
+def test_cancel_twice_refunds_once(ana):
+    r = services.request_redemption(ana, variant_of(make_product(cost=100)).pk, "pickup")
+    services.cancel(r, ana)
+    with pytest.raises(RedemptionError):
+        services.cancel(r, ana)
+    assert balance(ana) == 500
+
+
+def test_token_is_rechecked_inside_the_transaction(ana, monkeypatch):
+    """Simulate losing the race: the fast-path lookup misses, but the token exists by the time we hold the lock."""
+    token = uuid.uuid4()
+    variant = variant_of(make_product(cost=100, variants=(("M", 5),)))
+    first = services.request_redemption(ana, variant.pk, "pickup", token=token)
+    real_filter = Redemption.objects.filter
+    calls = {"n": 0}
+
+    def flaky_filter(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 1 and kwargs.get("request_token") == token:
+            return Redemption.objects.none()
+        return real_filter(*args, **kwargs)
+
+    monkeypatch.setattr(Redemption.objects, "filter", flaky_filter)
+    second = services.request_redemption(ana, variant.pk, "pickup", token=token)
+    assert second.pk == first.pk
+    assert balance(ana) == 400
