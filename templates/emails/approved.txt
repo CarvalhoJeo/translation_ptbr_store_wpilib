@@ -1,0 +1,15 @@
+Olá, {{ r.user.username }}!
+
+Seu resgate #{{ r.pk }} ({{ r.variant }}) foi aprovado.
+{% if r.delivery == "mail" %}
+Para enviarmos pelos Correios, pague o frete por Pix:
+
+{{ pix_instructions|default:"A equipe vai entrar em contato com o valor do frete." }}
+
+Assim que o pagamento for confirmado, enviamos e mandamos o código de rastreio.
+{% else %}
+Vamos combinar a entrega em mãos com você em breve.
+{% endif %}
+Acompanhe em {{ site_url }}/conta/
+
+— Equipe de tradução pt-BR da WPILib

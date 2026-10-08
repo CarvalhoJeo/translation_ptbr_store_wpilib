@@ -133,3 +133,24 @@ SYNC_TIME_BUDGET_SECONDS = int(os.environ.get("SYNC_TIME_BUDGET_SECONDS", "240")
 LAUNCH_AT = datetime.fromisoformat(os.environ.get("LAUNCH_AT") or "2026-11-01T00:00:00Z")
 if LAUNCH_AT.tzinfo is None:
     LAUNCH_AT = LAUNCH_AT.replace(tzinfo=timezone.utc)
+
+# E-mail: Gmail SMTP when EMAIL_HOST_USER is set (production), console otherwise.
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+if EMAIL_HOST_USER:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = "smtp.gmail.com"
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+    EMAIL_TIMEOUT = 15
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL") or (
+    f"Loja de Traduções WPILib <{EMAIL_HOST_USER}>" if EMAIL_HOST_USER else "Loja de Traduções WPILib <noreply@localhost>"
+)
+# Absolute links in e-mails.
+SITE_URL = os.environ.get("SITE_URL") or (
+    f"https://{os.environ['VERCEL_PROJECT_PRODUCTION_URL']}"
+    if os.environ.get("VERCEL_PROJECT_PRODUCTION_URL")
+    else "http://localhost:8000"
+)
