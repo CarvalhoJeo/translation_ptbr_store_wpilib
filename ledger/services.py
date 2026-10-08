@@ -1,5 +1,8 @@
+from datetime import datetime
+
 from django.db import transaction
 from django.db.models import Sum
+from django.db.models.functions import Coalesce
 
 from accounts.models import Profile
 
@@ -54,3 +57,21 @@ def claim_unclaimed(user, tx_username: str) -> int:
 
 def balance(user) -> int:
     return PointEntry.objects.filter(user=user).aggregate(total=Sum("amount"))["total"] or 0
+
+
+EARNING_KINDS = (PointEntry.Kind.TRANSLATED, PointEntry.Kind.REVIEWED, PointEntry.Kind.ADJUSTMENT)
+
+
+def leaderboard(since: datetime | None = None, limit: int = 100) -> list[tuple[str, int]]:
+    """Points earned (positive translated/reviewed/adjustment entries) by approved translators."""
+    entries = PointEntry.objects.filter(
+        kind__in=EARNING_KINDS, amount__gt=0, user__profile__link_status=Profile.LinkStatus.APPROVED
+    )
+    if since is not None:
+        entries = entries.annotate(earned_at=Coalesce("occurred_at", "created_at")).filter(earned_at__gte=since)
+    rows = (
+        entries.values("user__username")
+        .annotate(points=Sum("amount"))
+        .order_by("-points", "user__username")[:limit]
+    )
+    return [(row["user__username"], row["points"]) for row in rows]

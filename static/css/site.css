@@ -518,3 +518,14 @@ select {
 .pill--shipped, .pill--ready_for_pickup { background: #7a4ff0; }
 .pill--delivered { background: var(--green); }
 .pill--rejected, .pill--cancelled { background: var(--red); }
+
+.toggle { display: inline-flex; background: var(--surface); border: 2px solid var(--border); border-radius: 999px; padding: 4px; }
+.toggle__opt { padding: 6px 14px; border-radius: 999px; text-decoration: none; color: var(--muted); }
+.toggle__opt--on { background: var(--blue); color: #fff; }
+.ranking { list-style: none; padding: 8px 22px; }
+.ranking__row { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.ranking__row:last-child { border-bottom: 0; }
+.ranking__row--top { font-size: 1.15rem; }
+.ranking__pos { width: 2.2em; text-align: center; font-weight: 900; color: var(--muted); }
+.ranking__name { flex: 1; font-weight: 800; }
+.ranking__points { font-weight: 900; color: var(--gold-dark); }

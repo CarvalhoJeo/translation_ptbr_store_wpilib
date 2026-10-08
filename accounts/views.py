@@ -2,9 +2,10 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.shortcuts import redirect, render
+from django.utils import timezone
 
 from ledger.models import PointRates, UnclaimedEvent
-from ledger.services import balance
+from ledger.services import balance, leaderboard
 
 from .forms import EmailForm, LinkForm
 from .models import Profile
@@ -63,3 +64,11 @@ def account(request):
             "redemptions": request.user.redemptions.select_related("variant__product")[:50],
         },
     )
+
+
+def ranking(request):
+    monthly = request.GET.get("periodo") == "mes"
+    since = None
+    if monthly:
+        since = timezone.localtime().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    return render(request, "accounts/ranking.html", {"rows": leaderboard(since), "monthly": monthly})
