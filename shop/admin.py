@@ -1,9 +1,12 @@
 from django import forms
 from django.contrib import admin, messages
+from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
+from django.template.response import TemplateResponse
 from django.utils.html import format_html
 
+from . import services
 from .blob import ImageUploadError, upload_product_image, validate_image
-from .models import Product, StoreSettings, Variant
+from .models import Product, Redemption, RedemptionEvent, StoreSettings, Variant
 
 
 class ProductForm(forms.ModelForm):
@@ -83,3 +86,128 @@ class StoreSettingsAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+class TextActionForm(forms.Form):
+    _selected_action = forms.CharField(widget=forms.MultipleHiddenInput)
+    text = forms.CharField(widget=forms.Textarea(attrs={"rows": 3}))
+
+    def __init__(self, *args, label: str, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["text"].label = label
+
+
+class RedemptionEventInline(admin.TabularInline):
+    model = RedemptionEvent
+    extra = 0
+    can_delete = False
+    fields = readonly_fields = ["created_at", "status_from", "status_to", "actor", "note"]
+    verbose_name_plural = "Histórico"
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(Redemption)
+class RedemptionAdmin(admin.ModelAdmin):
+    list_display = ["id", "created_at", "user", "variant", "cost", "delivery", "status", "tracking_code"]
+    list_filter = ["status", "delivery"]
+    search_fields = ["user__username", "tracking_code", "full_name"]
+    list_select_related = ["user", "variant__product"]
+    inlines = [RedemptionEventInline]
+    actions = [
+        "approve_selected",
+        "reject_selected",
+        "mark_paid_selected",
+        "ship_selected",
+        "ready_selected",
+        "deliver_selected",
+    ]
+
+    def get_readonly_fields(self, request, obj=None):
+        return [field.name for field in Redemption._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def _apply(self, request, queryset, func, done: str, **kwargs):
+        succeeded = 0
+        for redemption in queryset.order_by("pk"):
+            try:
+                func(redemption, request.user, **kwargs)
+                succeeded += 1
+            except services.RedemptionError as exc:
+                self.message_user(request, f"#{redemption.pk}: {exc}", messages.ERROR)
+        if succeeded:
+            self.message_user(request, f"{succeeded} resgate(s) {done}.", messages.SUCCESS)
+
+    def _apply_with_text(self, request, queryset, *, title, label, func, done, kwarg):
+        if "apply" in request.POST:
+            form = TextActionForm(request.POST, label=label)
+            if form.is_valid():
+                self._apply(request, queryset, func, done, **{kwarg: form.cleaned_data["text"]})
+                return None
+        else:
+            form = TextActionForm(
+                initial={"_selected_action": request.POST.getlist(ACTION_CHECKBOX_NAME)}, label=label
+            )
+        context = {
+            **self.admin_site.each_context(request),
+            "title": title,
+            "form": form,
+            "redemptions": queryset,
+            "action": request.POST["action"],
+            "opts": self.model._meta,
+        }
+        return TemplateResponse(request, "admin/shop/redemption_text_action.html", context)
+
+    @admin.action(description="Aprovar")
+    def approve_selected(self, request, queryset):
+        self._apply(request, queryset, services.approve, "aprovado(s)")
+
+    @admin.action(description="Recusar (devolve pontos)")
+    def reject_selected(self, request, queryset):
+        return self._apply_with_text(
+            request,
+            queryset,
+            title="Recusar resgates",
+            label="Motivo da recusa",
+            func=services.reject,
+            done="recusado(s)",
+            kwarg="note",
+        )
+
+    @admin.action(description="Marcar frete pago")
+    def mark_paid_selected(self, request, queryset):
+        self._apply(request, queryset, services.mark_shipping_paid, "com frete pago")
+
+    @admin.action(description="Marcar enviado (rastreio)")
+    def ship_selected(self, request, queryset):
+        return self._apply_with_text(
+            request,
+            queryset,
+            title="Marcar como enviado",
+            label="Código de rastreio",
+            func=services.mark_shipped,
+            done="enviado(s)",
+            kwarg="tracking_code",
+        )
+
+    @admin.action(description="Pronto para retirar")
+    def ready_selected(self, request, queryset):
+        return self._apply_with_text(
+            request,
+            queryset,
+            title="Pronto para retirar",
+            label="Onde e quando retirar",
+            func=services.mark_ready_for_pickup,
+            done="pronto(s) para retirar",
+            kwarg="note",
+        )
+
+    @admin.action(description="Marcar entregue")
+    def deliver_selected(self, request, queryset):
+        self._apply(request, queryset, services.mark_delivered, "entregue(s)")
