@@ -142,7 +142,8 @@ if EMAIL_HOST_USER:
     EMAIL_HOST = "smtp.gmail.com"
     EMAIL_PORT = 587
     EMAIL_USE_TLS = True
-    EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+    # Vercel holds the Gmail app password as GMAIL_APP_PASSWD; EMAIL_HOST_PASSWORD also works.
+    EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD") or os.environ.get("GMAIL_APP_PASSWD", "")
     EMAIL_TIMEOUT = 15
 else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"

@@ -56,3 +56,17 @@ def test_postgres_through_neon_pooler_disables_server_side_cursors():
     result = subprocess.run([sys.executable, "-c", snippet], env=env, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout) is True
+
+
+def test_gmail_app_passwd_is_accepted_as_smtp_password():
+    import json
+
+    snippet = (
+        "import django, json; from django.conf import settings; django.setup(); "
+        "print(json.dumps([settings.EMAIL_BACKEND, bool(settings.EMAIL_HOST_PASSWORD)]))"
+    )
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("VERCEL", "DJANGO_", "EMAIL_", "GMAIL_"))}
+    env.update(DJANGO_SETTINGS_MODULE="store.settings", EMAIL_HOST_USER="loja@example.com", GMAIL_APP_PASSWD="x")
+    result = subprocess.run([sys.executable, "-c", snippet], env=env, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == ["django.core.mail.backends.smtp.EmailBackend", True]
