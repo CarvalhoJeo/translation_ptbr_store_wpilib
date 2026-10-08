@@ -120,3 +120,38 @@ def test_store_settings_admin_is_singleton(boss_client):
 
     StoreSettings.current()
     assert boss_client.get("/admin/shop/storesettings/add/").status_code == 403
+
+
+def test_validate_image_rejects_huge_dimensions(monkeypatch):
+    monkeypatch.setattr("shop.blob.MAX_PIXELS", 50)
+    with pytest.raises(ImageUploadError, match="grande demais"):
+        validate_image(image_file(size=(10, 10)))
+
+
+def test_validate_image_turns_decompression_bomb_into_form_error(monkeypatch):
+    def bomb(*args, **kwargs):
+        raise Image.DecompressionBombError("bomb")
+
+    monkeypatch.setattr("shop.blob.Image.open", bomb)
+    with pytest.raises(ImageUploadError, match="inválido"):
+        validate_image(image_file())
+
+
+def test_upload_product_image_puts_public_file_and_returns_url(monkeypatch):
+    from shop import blob
+
+    calls = {}
+
+    class Result:
+        url = "https://x.public.blob.vercel-storage.com/products/camiseta-abcd.png"
+
+    def fake_put(path, body, **kwargs):
+        calls.update(path=path, body=body, **kwargs)
+        return Result()
+
+    monkeypatch.setattr(blob.vercel.blob, "put", fake_put)
+    url = blob.upload_product_image(image_file(), "Camiseta Azul")
+    assert url == Result.url
+    assert calls["path"].startswith("products/camiseta-azul-") and calls["path"].endswith(".png")
+    assert calls["access"] == "public" and calls["content_type"] == "image/png"
+    assert calls["body"][:8] == b"\x89PNG\r\n\x1a\n"

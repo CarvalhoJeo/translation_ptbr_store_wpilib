@@ -5,6 +5,7 @@ from django.utils.text import slugify
 from PIL import Image, UnidentifiedImageError
 
 ALLOWED_FORMATS = {"JPEG": ("jpg", "image/jpeg"), "PNG": ("png", "image/png"), "WEBP": ("webp", "image/webp")}
+MAX_PIXELS = 40_000_000
 MAX_BYTES = 4 * 1024 * 1024  # under Vercel's 4.5 MB request body limit
 
 
@@ -18,11 +19,15 @@ def validate_image(uploaded) -> tuple[str, str]:
     try:
         with Image.open(uploaded) as image:
             image_format = image.format
-            image.verify()
-    except (UnidentifiedImageError, OSError):
-        raise ImageUploadError("Arquivo de imagem inválido.")
+            too_big = image.width * image.height > MAX_PIXELS
+            if not too_big:
+                image.verify()
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
+        raise ImageUploadError("Arquivo de imagem inválido.") from None
     finally:
         uploaded.seek(0)
+    if too_big:
+        raise ImageUploadError("A foto é grande demais (máx. 40 megapixels).")
     if image_format not in ALLOWED_FORMATS:
         raise ImageUploadError("Use uma foto JPG, PNG ou WebP.")
     return ALLOWED_FORMATS[image_format]
