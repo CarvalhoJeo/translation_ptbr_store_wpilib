@@ -1,0 +1,17 @@
+# Never upload local secrets or data to Vercel
+.env
+.env.*
+!.env.example
+*.env
+db.sqlite3
+*.sqlite3
+spike/
+.superpowers/
+.venv/
+__pycache__/
+.pytest_cache/
+.agents/
+.claude/
+skills-lock.json
+staticfiles/
+media/
