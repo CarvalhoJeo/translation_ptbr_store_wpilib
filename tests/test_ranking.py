@@ -19,9 +19,18 @@ def test_ranks_by_points_earned_not_balance(django_user_model):
     add(ana, 300, PointEntry.Kind.TRANSLATED, key="k1")
     add(ana, -250, PointEntry.Kind.REDEMPTION)
     add(bia, 200, PointEntry.Kind.REVIEWED, key="k2")
-    add(bia, -50)  # negative adjustment does not count as earned
+    add(bia, -50)  # negative adjustment (admin correction) does count
     add(bia, 50, PointEntry.Kind.REFUND)  # refunds are not earnings
-    assert leaderboard() == [("ana", 300), ("bia", 200)]
+    assert leaderboard() == [("ana", 300), ("bia", 150)]
+
+
+def test_correcting_a_mistaken_bonus_removes_it_from_the_ranking(django_user_model):
+    ana = make_user(django_user_model, "ana", "alice", "a@example.com")
+    bia = make_user(django_user_model, "bia", "bob", "b@example.com")
+    add(ana, 100, PointEntry.Kind.TRANSLATED, key="k1")
+    add(bia, 1000)
+    add(bia, -1000)
+    assert leaderboard() == [("ana", 100)]
 
 
 def test_excludes_unapproved(django_user_model):
