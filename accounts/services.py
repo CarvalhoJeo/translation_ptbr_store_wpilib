@@ -1,5 +1,7 @@
 import re
 
+from django.db import IntegrityError, transaction
+
 from .models import Profile
 
 _USERNAME_RE = re.compile(r"^[\w.@+-]+$")
@@ -39,3 +41,23 @@ def request_link(user, raw_username: str) -> Profile:
     profile.link_status = Profile.LinkStatus.PENDING
     profile.save()
     return profile
+
+
+def approve_link(profile: Profile) -> int:
+    from ledger.services import claim_unclaimed  # ledger imports accounts.models; avoid a cycle at import time
+
+    if not profile.transifex_username:
+        raise LinkError("Nenhum usuário do Transifex informado.")
+    try:
+        with transaction.atomic():
+            profile.link_status = Profile.LinkStatus.APPROVED
+            profile.save(update_fields=["link_status"])
+            return claim_unclaimed(profile.user, profile.transifex_username)
+    except IntegrityError:
+        profile.link_status = Profile.LinkStatus.PENDING
+        raise LinkError("Este usuário do Transifex já está vinculado a outra conta.")
+
+
+def reject_link(profile: Profile) -> None:
+    profile.link_status = Profile.LinkStatus.REJECTED
+    profile.save(update_fields=["link_status"])
