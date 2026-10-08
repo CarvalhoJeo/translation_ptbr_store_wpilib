@@ -152,3 +152,38 @@ def test_sync_does_not_overwrite_admin_edits_to_other_fields(ana):
 
     sync_all(EditingSource({}), NOW, LAUNCH)
     assert TrackedResource.objects.get().active is False
+
+
+class FakeClock:
+    """Each call advances time by `step` seconds."""
+
+    def __init__(self, step):
+        self.t, self.step = 0.0, step
+
+    def __call__(self):
+        self.t += self.step
+        return self.t
+
+
+def test_time_budget_stops_before_starting_more_resources(ana):
+    for rid in ("r1", "r2", "r3"):
+        TrackedResource.objects.create(resource_id=rid)
+    source = FakeSource({"r1": [ev("k1")], "r2": [ev("k2")], "r3": [ev("k3")]})
+
+    # clock reads 10, 20, 30...; deadline 25 → r1 and r2 start, r3 is skipped
+    result = sync_all(source, NOW, LAUNCH, deadline=25, clock=FakeClock(10))
+
+    assert (result.resources_ok, result.resources_skipped) == (2, 1)
+    assert TrackedResource.objects.get(resource_id="r3").cursor is None
+    assert balance(ana) == 40
+
+
+def test_least_recently_synced_resources_go_first(ana):
+    TrackedResource.objects.create(resource_id="a-recent", last_synced_at=NOW)
+    TrackedResource.objects.create(resource_id="z-never")
+    TrackedResource.objects.create(resource_id="m-old", last_synced_at=LAUNCH)
+    source = FakeSource({})
+
+    sync_all(source, NOW, LAUNCH)
+
+    assert list(source.since) == ["z-never", "m-old", "a-recent"]

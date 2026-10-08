@@ -1,8 +1,11 @@
 import logging
+import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 
 from django.db import transaction
+from django.db.models import F
 
 from accounts.models import Profile
 from ledger.models import UnclaimedEvent
@@ -20,6 +23,7 @@ class SyncResult:
     resources_failed: int = 0
     new_events: int = 0
     claimed_late: int = 0
+    resources_skipped: int = 0
 
 
 def sync_resource(tracked: TrackedResource, source: ProgressSource, now: datetime, launch_at: datetime) -> int:
@@ -36,9 +40,31 @@ def sync_resource(tracked: TrackedResource, source: ProgressSource, now: datetim
     return new
 
 
-def sync_all(source: ProgressSource, now: datetime, launch_at: datetime) -> SyncResult:
+def track_project_resources(client, project_id: str) -> int:
+    """Start tracking resources added to the project on Transifex; returns how many are new."""
+    return sum(TrackedResource.objects.get_or_create(resource_id=rid)[1] for rid in client.iter_resources(project_id))
+
+
+def sync_all(
+    source: ProgressSource,
+    now: datetime,
+    launch_at: datetime,
+    deadline: float | None = None,
+    clock: Callable[[], float] = time.monotonic,
+) -> SyncResult:
+    """Sync active resources, least recently synced first.
+
+    With a `deadline` (a `clock()` reading), no new resource starts after it; the
+    skipped ones go first on the next run.
+    """
     result = SyncResult()
-    for tracked in TrackedResource.objects.filter(active=True):
+    resources = list(
+        TrackedResource.objects.filter(active=True).order_by(F("last_synced_at").asc(nulls_first=True), "resource_id")
+    )
+    for index, tracked in enumerate(resources):
+        if deadline is not None and clock() >= deadline:
+            result.resources_skipped = len(resources) - index
+            break
         try:
             result.new_events += sync_resource(tracked, source, now, launch_at)
             result.resources_ok += 1

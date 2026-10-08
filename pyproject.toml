@@ -8,6 +8,7 @@ dependencies = [
     "dj-database-url>=2.2",
     "python-dotenv>=1.0",
     "requests>=2.32",
+    "psycopg[binary]>=3.2",
 ]
 
 [dependency-groups]
@@ -21,3 +22,7 @@ dev = [
 DJANGO_SETTINGS_MODULE = "store.settings"
 python_files = ["test_*.py"]
 pythonpath = ["."]
+
+[tool.vercel.scripts]
+# Runs on every Vercel build (DATABASE_URL comes from the Neon integration).
+build = "python manage.py migrate --noinput"
