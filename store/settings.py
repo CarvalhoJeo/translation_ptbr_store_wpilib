@@ -87,6 +87,9 @@ DATABASES = {
         os.environ.get("DATABASE_URL") or f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
     )
 }
+if DATABASES["default"]["ENGINE"].endswith("postgresql"):
+    # Neon's DATABASE_URL goes through PgBouncer (transaction mode), which breaks server-side cursors.
+    DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 LANGUAGE_CODE = "pt-br"

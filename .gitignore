@@ -31,3 +31,8 @@ spike/
 .vercel/
 .env.local
 .env*.local
+
+# Provider agent skills installed locally by `vercel integration add`
+.agents/
+.claude/skills/
+skills-lock.json

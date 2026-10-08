@@ -42,3 +42,17 @@ def test_on_vercel_trusts_its_own_urls_and_secures_cookies():
 @pytest.mark.parametrize("env", [{}, {"DJANGO_SECRET_KEY": ""}])
 def test_locally_the_dev_fallback_key_still_works(env):
     assert load_settings(**env).returncode == 0
+
+
+def test_postgres_through_neon_pooler_disables_server_side_cursors():
+    import json
+
+    snippet = (
+        "import django, json; from django.conf import settings; django.setup(); "
+        "print(json.dumps(settings.DATABASES['default'].get('DISABLE_SERVER_SIDE_CURSORS')))"
+    )
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("VERCEL", "DJANGO_"))}
+    env.update(DJANGO_SETTINGS_MODULE="store.settings", DATABASE_URL="postgres://u:p@db-pooler.example.com/app")
+    result = subprocess.run([sys.executable, "-c", snippet], env=env, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) is True
