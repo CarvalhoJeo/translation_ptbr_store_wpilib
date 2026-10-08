@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Resgatar {{ product.name }} — Loja de Traduções WPILib{% endblock %}
+{% block content %}
+  <p><a href="{% url 'shop_catalog' %}">← Voltar para a loja</a></p>
+  <section class="card request">
+    <div class="request__head">
+      {% if product.image_url %}<img class="request__img" src="{{ product.image_url }}" alt="">{% endif %}
+      <div>
+        <h1 class="card__title">Resgatar {{ product.name }}</h1>
+        <p><strong>{{ product.cost }} pontos</strong> · você tem {{ balance }} pontos</p>
+      </div>
+    </div>
+
+    <form method="post" class="form" id="redeem-form">
+      {% csrf_token %}
+      {{ form.request_token }}
+      {% if form.non_field_errors %}<ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+
+      <fieldset class="choices">
+        <legend>{{ form.variant.label }}</legend>
+        {{ form.variant.errors }}
+        {% for radio in form.variant %}<label class="choice">{{ radio.tag }} {{ radio.choice_label }}</label>{% endfor %}
+      </fieldset>
+
+      <fieldset class="choices">
+        <legend>{{ form.delivery.label }}</legend>
+        {{ form.delivery.errors }}
+        {% for radio in form.delivery %}<label class="choice">{{ radio.tag }} {{ radio.choice_label }}</label>{% endfor %}
+      </fieldset>
+
+      <fieldset class="address" id="address-fields">
+        <legend>Endereço para envio</legend>
+        <div class="address__grid">
+          {% for field in form %}
+            {% if field.name in "full_name cep street number complement district city uf phone" %}
+              <p class="address__{{ field.name }}">{{ field.label_tag }} {{ field }} {{ field.errors }}</p>
+            {% endif %}
+          {% endfor %}
+        </div>
+        <p class="helptext">O frete é pago por Pix depois que o pedido for aprovado. Seu endereço é apagado 30 dias depois da entrega.</p>
+      </fieldset>
+
+      <button class="btn btn--gold btn--big" type="submit" id="redeem-submit">Confirmar resgate</button>
+    </form>
+  </section>
+  <script>
+    (function () {
+      var form = document.getElementById("redeem-form");
+      var address = document.getElementById("address-fields");
+      function sync() {
+        var mail = form.querySelector('input[name="delivery"][value="mail"]');
+        address.hidden = !(mail && mail.checked);
+      }
+      form.addEventListener("change", sync);
+      sync();
+      form.addEventListener("submit", function () {
+        document.getElementById("redeem-submit").disabled = true;
+      });
+    })();
+  </script>
+{% endblock %}

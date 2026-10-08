@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load socialaccount %}
+{% block title %}Loja — Loja de Traduções WPILib{% endblock %}
+{% block content %}
+  <div class="account-head">
+    <h1>Loja</h1>
+    {% if balance is not None %}
+      <div class="coin"><span class="coin__icon" aria-hidden="true">★</span><span class="coin__text"><strong>{{ balance }} pontos</strong> disponíveis</span></div>
+    {% endif %}
+  </div>
+
+  {% if products %}
+    <ul class="products">
+      {% for product in products %}
+        <li class="product card">
+          {% if product.image_url %}
+            <img class="product__img" src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy">
+          {% else %}
+            <div class="product__img product__img--empty" aria-hidden="true">🎁</div>
+          {% endif %}
+          <h2 class="product__name">{{ product.name }}</h2>
+          {% if product.description %}<p class="product__desc">{{ product.description|linebreaksbr }}</p>{% endif %}
+          <p class="product__cost"><span class="coin-mini" aria-hidden="true">★</span> {{ product.cost }} pontos</p>
+          <ul class="chips">
+            {% for v in product.variants.all %}
+              {% if v.name != "Único" %}<li class="chip{% if not v.stock %} chip--off{% endif %}">{{ v.name }}</li>{% endif %}
+            {% endfor %}
+          </ul>
+          <div class="product__action">
+            {% if not product.total_stock %}
+              <span class="btn btn--disabled">Esgotado</span>
+            {% elif not user.is_authenticated %}
+              <a class="btn btn--light-dark" href="{% provider_login_url 'github' process='login' %}">Entre com GitHub para resgatar</a>
+            {% elif not linked %}
+              <a class="btn btn--light-dark" href="{% url 'account' %}">Vincule sua conta</a>
+            {% elif balance < product.cost %}
+              <span class="btn btn--disabled">Você precisa de {{ product.cost }} pontos</span>
+            {% else %}
+              <a class="btn btn--gold" href="{% url 'shop_request' product.pk %}">Resgatar</a>
+            {% endif %}
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty">Nenhum brinde disponível ainda. Volte em breve!</p>
+  {% endif %}
+{% endblock %}

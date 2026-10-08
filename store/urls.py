@@ -7,5 +7,6 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("contas/", include("allauth.urls")),
     path("cron/sync/", cron_sync, name="cron_sync"),
+    path("", include("shop.urls")),
     path("", include("accounts.urls")),
 ]
