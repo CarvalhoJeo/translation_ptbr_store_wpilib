@@ -40,6 +40,10 @@ def record_progress(event: ProgressEvent) -> bool:
 def claim_unclaimed(user, tx_username: str) -> int:
     with transaction.atomic():
         events = list(UnclaimedEvent.objects.select_for_update().filter(tx_username__iexact=tx_username))
+        already = set(
+            PointEntry.objects.filter(string_key__in=[e.string_key for e in events]).values_list("string_key", "kind")
+        )
+        fresh = [e for e in events if (e.string_key, e.kind) not in already]
         PointEntry.objects.bulk_create(
             PointEntry(
                 user=user,
@@ -49,10 +53,10 @@ def claim_unclaimed(user, tx_username: str) -> int:
                 words=e.words,
                 occurred_at=e.occurred_at,
             )
-            for e in events
+            for e in fresh
         )
         UnclaimedEvent.objects.filter(pk__in=[e.pk for e in events]).delete()
-    return len(events)
+    return len(fresh)
 
 
 def balance(user) -> int:

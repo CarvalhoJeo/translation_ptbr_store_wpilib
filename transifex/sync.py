@@ -17,6 +17,10 @@ from .source import ProgressSource
 logger = logging.getLogger(__name__)
 
 
+class ResourceBusy(Exception):
+    """Another sync run holds this resource."""
+
+
 @dataclass
 class SyncResult:
     resources_ok: int = 0
@@ -32,6 +36,9 @@ def sync_resource(tracked: TrackedResource, source: ProgressSource, now: datetim
     # and the DB transaction stays short.
     events = list(source.events_for(tracked.resource_id, since))
     with transaction.atomic():
+        # Overlapping cron runs: skip a resource another run is already writing.
+        if not TrackedResource.objects.select_for_update(skip_locked=True).filter(pk=tracked.pk).values_list("pk", flat=True)[:1]:
+            raise ResourceBusy(tracked.resource_id)
         new = sum(1 for event in events if record_progress(event))
         tracked.cursor = now
         tracked.last_synced_at = now
@@ -68,6 +75,8 @@ def sync_all(
         try:
             result.new_events += sync_resource(tracked, source, now, launch_at)
             result.resources_ok += 1
+        except ResourceBusy:
+            result.resources_skipped += 1
         except Exception as exc:
             # Nothing was written for this resource; only record the error.
             logger.exception("falha ao sincronizar o recurso %s", tracked.resource_id)

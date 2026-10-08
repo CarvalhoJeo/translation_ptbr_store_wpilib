@@ -64,6 +64,7 @@ def test_tracks_resources_syncs_and_reports(client, cron_settings, django_user_m
     assert (body["resources_ok"], body["resources_failed"], body["new_events"]) == (1, 0, 1)
     assert TrackedResource.objects.get().resource_id == RES
     assert balance(user) == 4  # 2 words × 2 points
+    assert body["addresses_erased"] == 0
 
 
 @responses.activate

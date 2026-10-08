@@ -8,6 +8,8 @@ from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_GET
 
+from shop.maintenance import erase_old_addresses
+
 from .client import TransifexClient, TransifexError
 from .source import ResourceTranslationsSource
 from .sync import sync_all, track_project_resources
@@ -45,5 +47,6 @@ def cron_sync(request):
     source = ResourceTranslationsSource(client, settings.TRANSIFEX_LANGUAGE, settings.LAUNCH_AT)
     result = sync_all(source, timezone.now(), settings.LAUNCH_AT, deadline=deadline)
     body.update(asdict(result))
+    body["addresses_erased"] = erase_old_addresses(timezone.now())
     logger.info("cron sync: %s", body)
     return JsonResponse(body)
