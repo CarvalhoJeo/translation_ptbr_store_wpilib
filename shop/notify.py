@@ -24,14 +24,17 @@ def _send(redemption: Redemption, template: str, recipients, subject: str, extra
     recipients = [address for address in recipients if address]
     if not recipients:
         return
-    body = render_to_string(f"emails/{template}.txt", {"r": redemption, "site_url": settings.SITE_URL, **(extra or {})})
     try:
+        body = render_to_string(f"emails/{template}.txt", {"r": redemption, "site_url": settings.SITE_URL, **(extra or {})})
         send_mail(subject, body, None, recipients)
     except Exception as exc:  # e-mail must never undo a redemption step
         logger.exception("falha ao enviar e-mail %s do resgate %s", template, redemption.pk)
-        RedemptionEvent.objects.create(
-            redemption=redemption, note=f"falha ao enviar e-mail ({template}): {type(exc).__name__}: {exc}"[:1000]
-        )
+        try:
+            RedemptionEvent.objects.create(
+                redemption=redemption, note=f"falha ao enviar e-mail ({template}): {type(exc).__name__}: {exc}"[:1000]
+            )
+        except Exception:
+            logger.exception("não foi possível registrar a falha de e-mail do resgate %s", redemption.pk)
 
 
 def new_redemption(redemption_id: int) -> None:

@@ -1,4 +1,4 @@
-Olá, {{ r.user.username }}!
+{% autoescape off %}Olá, {{ r.user.username }}!
 
 Seu resgate #{{ r.pk }} ({{ r.variant }}) foi aprovado.
 {% if r.delivery == "mail" %}
@@ -13,3 +13,4 @@ Vamos combinar a entrega em mãos com você em breve.
 Acompanhe em {{ site_url }}/conta/
 
 — Equipe de tradução pt-BR da WPILib
+{% endautoescape %}

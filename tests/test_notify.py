@@ -81,3 +81,20 @@ def test_after_commit_defers_until_commit(ana, django_capture_on_commit_callback
         notify.after_commit(notify.approved, r.pk)
         assert mail.outbox == []
     assert len(mail.outbox) == 1
+
+
+def test_plain_text_mail_is_not_html_escaped(ana):
+    settings_row = StoreSettings.current()
+    settings_row.pix_instructions = "Chave: a&b <frete> 'R$ 25'"
+    settings_row.save()
+    r = make_redemption(ana, make_product(), delivery="mail", status="approved")
+    notify.approved(r.pk)
+    assert "Chave: a&b <frete> 'R$ 25'" in mail.outbox[0].body
+    assert "&amp;" not in mail.outbox[0].body
+
+
+def test_failure_while_recording_failure_does_not_raise(ana, monkeypatch):
+    monkeypatch.setattr(notify, "send_mail", lambda *a, **k: (_ for _ in ()).throw(OSError("smtp down")))
+    monkeypatch.setattr(notify.RedemptionEvent.objects, "create", lambda **k: (_ for _ in ()).throw(RuntimeError("db down")))
+    r = make_redemption(ana, make_product(), status="approved")
+    notify.approved(r.pk)  # must not raise

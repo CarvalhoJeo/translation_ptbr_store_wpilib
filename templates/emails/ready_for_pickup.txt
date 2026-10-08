@@ -1,7 +1,8 @@
-Olá, {{ r.user.username }}!
+{% autoescape off %}Olá, {{ r.user.username }}!
 
 Seu resgate #{{ r.pk }} ({{ r.variant }}) está pronto para retirar em mãos.
 {% if r.admin_note %}
 {{ r.admin_note }}
 {% endif %}
 — Equipe de tradução pt-BR da WPILib
+{% endautoescape %}
